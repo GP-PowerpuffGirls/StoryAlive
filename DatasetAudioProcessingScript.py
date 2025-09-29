@@ -4,6 +4,7 @@ import json
 
 # ---------------- CONFIG ----------------
 DATASET_ROOT = "UnprocessedEmotionAudios"
+MOVIE_NAME = "Tangled"   # <--- choose the movie to process
 
 GENDERS = ["Male", "Female"]
 EMOTIONS = [
@@ -45,35 +46,34 @@ def process_audio(input_path, output_path):
 def main():
     counters = load_counters()
 
+    # Only look inside this movie’s folder
+    movie_root = os.path.join(DATASET_ROOT, MOVIE_NAME)
+
     for gender in GENDERS:
         for emotion in EMOTIONS:
             counters.setdefault(f"{gender}_{emotion}", 0)
 
-            # Find matching folders inside DATASET_ROOT
-            for root, dirs, files in os.walk(DATASET_ROOT):
-                # Skip unless this is exactly the expected gender/emotion folder
-                if os.path.basename(root) != emotion:
-                    continue
-                if os.path.basename(os.path.dirname(root)) != gender:
-                    continue
+            input_dir = os.path.join(movie_root, gender, emotion)
+            if not os.path.exists(input_dir):
+                continue
 
-                for file in files:
-                    if file.lower().endswith((".wav", ".m4a", ".mp3", ".flac")):
-                        input_path = os.path.join(root, file)
+            for file in os.listdir(input_dir):
+                if file.lower().endswith((".wav", ".m4a", ".mp3", ".flac")):
+                    input_path = os.path.join(input_dir, file)
 
-                        # Increment counter for this gender/emotion
-                        counters[f"{gender}_{emotion}"] += 1
-                        new_name = f"{counters[f'{gender}_{emotion}']}.wav"
+                    # Increment counter for this gender/emotion
+                    counters[f"{gender}_{emotion}"] += 1
+                    new_name = f"{counters[f'{gender}_{emotion}']}.wav"
 
-                        # Output path (without movie name)
-                        output_dir = os.path.join(OUTPUT_ROOT, gender, emotion)
-                        output_path = os.path.join(output_dir, new_name)
+                    # Output path (without movie name)
+                    output_dir = os.path.join(OUTPUT_ROOT, gender, emotion)
+                    output_path = os.path.join(output_dir, new_name)
 
-                        print(f"Processing {input_path} -> {output_path}")
-                        process_audio(input_path, output_path)
+                    print(f"Processing {input_path} -> {output_path}")
+                    process_audio(input_path, output_path)
 
     save_counters(counters)
-    print("✅ All audio files processed with continuous numbering!")
+    print(f"✅ All audio files from {MOVIE_NAME} processed with continuous numbering!")
 
 if __name__ == "__main__":
     main()
