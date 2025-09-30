@@ -4,11 +4,11 @@ import json
 
 # ---------------- CONFIG ----------------
 DATASET_ROOT = "UnprocessedEmotionAudios"
-MOVIE_NAME = "Tangled"   # <--- choose the movie to process
+MOVIE_NAME = "PrincessAndTheFrog"   # <--- choose the movie to process
 
 GENDERS = ["Male", "Female"]
 EMOTIONS = [
-    "Anger","Calm", "Sad", "Fear", "Warning", "Surprise",
+    "Anger","Calm", "Sad", "Fear", "Warning", "Surprise", "Happiness", "Laughter", "Dramatic"
     "Whisper", "Excitement","Horror", "Flirty", "Pained", "Narration"
 ]
 
