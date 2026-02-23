@@ -1,5 +1,6 @@
 package com.StoryAlive.StoryAlive.Security
 
+import com.StoryAlive.StoryAlive.DTOs.CustomUserDetails
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -25,7 +26,13 @@ class JwtAuthFilter (private val jwtService: JwtService) : OncePerRequestFilter(
                 val userId = jwtService.extractUserId(authHeader) // extract the user id from the token
 
                 // ! Handle Null credentials
-                val auth = UsernamePasswordAuthenticationToken(userId, null) //    You’re basically telling Spring: “Trust me. This user is authenticated.”
+//                val auth = UsernamePasswordAuthenticationToken(userId, null) //    You’re basically telling Spring: “Trust me. This user is authenticated.”
+                val userDetails = CustomUserDetails(userId)
+                val auth = UsernamePasswordAuthenticationToken(
+                    userDetails,
+                    null,
+                    userDetails.authorities
+                )
 
                 // SecurityContextHolder stores current user
                 SecurityContextHolder.getContext().authentication = auth

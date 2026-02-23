@@ -37,21 +37,18 @@ class JwtService ( @Value($$"${jwt.secret:}") private val jwtSecrete : String ) 
                     .compact()
 
     }
-    fun generateAccessToken(userId: ObjectId) : String = generateToken(userId, "access", accessTokenValidityMs) ?: throw Exception("Failed to generate access token")
-    fun generateRefereshToken(userId: ObjectId) : String = generateToken(userId, "refresh", refreshTokenValidityMs) ?: throw Exception("Failed to generate refresh token")
+    fun generateAccessToken(userId: ObjectId) : String = generateToken(userId, "access", accessTokenValidityMs) ?: throw IllegalStateException ("Failed to generate access token")
+    fun generateRefereshToken(userId: ObjectId) : String = generateToken(userId, "refresh", refreshTokenValidityMs) ?: throw IllegalStateException ("Failed to generate refresh token")
 
     fun parseAllClaims(token: String): Claims? {
-        return try {
-            val rawToken = if(token.startsWith("Bearer")) token.removePrefix("Bearer ") else token
-            Jwts.parser()
-                .verifyWith(secretKey)
-                .build()
-                .parseSignedClaims(rawToken)
-                .payload
-        }
-        catch (e: Exception) {
-            null
-        }
+
+        val rawToken = if(token.startsWith("Bearer")) token.removePrefix("Bearer ") else token
+
+        return Jwts.parser()
+            .verifyWith(secretKey)
+            .build()
+            .parseSignedClaims(rawToken)
+            .payload
 
     }
     fun validateAccessToken(token: String): Boolean {
