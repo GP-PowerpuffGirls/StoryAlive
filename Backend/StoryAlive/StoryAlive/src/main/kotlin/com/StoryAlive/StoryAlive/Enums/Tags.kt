@@ -15,5 +15,8 @@ enum class Tags(val tagName: String) {
     INTENSE("intense"),
     EDUCATIONAL("educational"),
     SELF_HELP("self-help"),
-    GRIEF("grief")
+    GRIEF("grief"),
+    HAS_SFX("Story has sound effects"),
+    HAS_BGMUSIC("Story has background music")
+
 }

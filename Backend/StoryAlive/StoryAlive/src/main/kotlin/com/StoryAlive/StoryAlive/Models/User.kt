@@ -17,8 +17,8 @@ data class User(
     val age: Int,
     val favouriteStories: List<ObjectId> = emptyList(),
     val favouriteVoiceActors: List<ObjectId> = emptyList(),
-    val totalSearchCount: Int = 0,
+    val accountCreationDate: java.time.Instant = java.time.Instant.now(),
     val totalPublishedStoriesCount: Int = 0,
     val totalVoiceActorsCount: Int = 0,
-    val userPreferencesTags: List<Tags> = emptyList()
+    val totalStoriesCount: Int = 0,
 )

@@ -14,5 +14,8 @@ enum class LocationName(locationName: String) {
     MOSQUE("مسجد"),
     CHURCH("كنيسة"),
     MARKET("سوق"),
-    POLICE_STATION("الشرطة")
+    POLICE_STATION("الشرطة"),
+    BIRD_SONG("صوت طيور"),
+    STORM("عاصفة"),
+    RAIN("مطر")
 }

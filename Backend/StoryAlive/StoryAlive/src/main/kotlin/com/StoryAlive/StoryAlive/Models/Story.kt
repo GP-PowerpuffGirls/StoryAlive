@@ -20,7 +20,8 @@ data class Story(
     val finalAudioPath: String,
     val jsonPath: String,
     val pdfPath: String,
-    val thumbnailPath: String = "",
     val createdAt: java.time.Instant = java.time.Instant.now(),
-    val modifiedAt: java.time.Instant = java.time.Instant.now()
+    val modifiedAt: java.time.Instant = java.time.Instant.now(),
+    val minimumAge: Int,
+    val numberOfViews: Int = 0
 )

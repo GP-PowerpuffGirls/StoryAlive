@@ -1,6 +1,7 @@
 package com.StoryAlive.StoryAlive.Models
 
 import com.StoryAlive.StoryAlive.Enums.Gender
+import jakarta.validation.constraints.NotEmpty
 import org.bson.types.ObjectId
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.index.Indexed
@@ -15,5 +16,9 @@ data class VoiceActor(
     val gender: Gender,
     val isAdult: Boolean = true,
     val isPrivate: Boolean,
-    val audios: List<Audio> = emptyList()
-)
+    val audios: @NotEmpty List<Audio>
+){
+    init {
+        require(audios.isNotEmpty()) { "VoiceActor must have at least one audio" }
+    }
+}
