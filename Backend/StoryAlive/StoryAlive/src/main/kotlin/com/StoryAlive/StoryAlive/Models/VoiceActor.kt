@@ -11,12 +11,11 @@ import org.springframework.data.mongodb.core.mapping.Document
 data class VoiceActor(
     @Id val voiceActorId: ObjectId = ObjectId(),
     val userId: ObjectId? = null,
-    @Indexed(unique = true)
     val actorName: String,
     val gender: Gender,
     val isAdult: Boolean = true,
     val isPrivate: Boolean,
-    val audios: @NotEmpty List<Audio>
+    var audios: @NotEmpty List<Audio>
 ){
     init {
         require(audios.isNotEmpty()) { "VoiceActor must have at least one audio" }

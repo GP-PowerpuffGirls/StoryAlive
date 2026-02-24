@@ -8,4 +8,7 @@ import org.springframework.data.mongodb.repository.MongoRepository
 
 interface VoiceActorRepo: MongoRepository<VoiceActor, ObjectId> {
     fun findAllByIsPrivateFalse(pageable: Pageable): Page<VoiceActor>
+    fun findAllByUserIdAndIsPrivateTrue(userId: ObjectId, pageable: Pageable): Page<VoiceActor>
+    fun findByUserIdAndActorNameAndIsPrivateTrue(userId: ObjectId, actorName: String): VoiceActor?
+    fun findByActorNameAndIsPrivateFalse(actorName: String): VoiceActor?
 }
