@@ -30,7 +30,7 @@ class StoryService(private val storyRepo: StoryRepo) {
 
         return storyRepo.findAllByCreatorIdAndIsPrivateTrue(creatorId, pageable)
     }
-    fun createNewStory(storyRequest: StoryRequestDTO) {
+    fun createNewStory(storyRequest: StoryRequestDTO):Story {
         val currentUser = (SecurityContextHolder
             .getContext()
             .authentication
