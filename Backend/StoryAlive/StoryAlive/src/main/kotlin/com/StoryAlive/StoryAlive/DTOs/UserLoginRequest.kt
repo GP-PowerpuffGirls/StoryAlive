@@ -1,13 +1,14 @@
 package com.StoryAlive.StoryAlive.DTOs
 
 import jakarta.validation.constraints.Email
+import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Pattern
 
 data class UserLoginRequest(
 
-//    @field:Email(message = "Invalid email format")
+    @field:Email(message = "Invalid Email Format")
     val email: String,
 
-//    @field:Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,}$", message = "Password must be at least 8 characters long and contain both letters and numbers")
+    @field:NotBlank(message = "Please provide a password")
     val password: String
 )

@@ -11,6 +11,5 @@ fun UserSignupRequest.toUser(): User {
         email = email,
         password = password, //assigned password should be hashed ya menna
         age = age,
-        userPreferencesTags = preferencesTags
     )
 }

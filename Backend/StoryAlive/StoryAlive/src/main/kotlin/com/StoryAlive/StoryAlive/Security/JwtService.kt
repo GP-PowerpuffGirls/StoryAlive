@@ -12,7 +12,7 @@ import kotlin.io.encoding.Base64
 @Service
 class JwtService ( @Value($$"${jwt.secret:}") private val jwtSecrete : String ) {
 
-    val accessTokenValidityMs = 60L * 60L * 1000L // 60 minutes in milliseconds
+    val accessTokenValidityMs = 15L * 60L * 1000L // 60 minutes in milliseconds
     val refreshTokenValidityMs = 30L * 24 * 60 * 60 * 1000L // 30 days
 
     private val secretKey = Keys.hmacShaKeyFor(
@@ -71,6 +71,5 @@ class JwtService ( @Value($$"${jwt.secret:}") private val jwtSecrete : String ) 
         val expiration = claims.expiration ?: return true
         return expiration.before(Date())
     }
-
 
 }

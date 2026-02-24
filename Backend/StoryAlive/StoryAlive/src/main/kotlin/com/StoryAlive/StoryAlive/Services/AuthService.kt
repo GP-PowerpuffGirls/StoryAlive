@@ -43,11 +43,9 @@ class AuthService (
                     email = user.email,
                     password = hashedPassword,
                     age = user.age,
-                    userPreferencesTags = user.preferencesTags,
 
                     favouriteStories = emptyList(),
                     favouriteVoiceActors = emptyList(),
-                    totalSearchCount = 0,
                     totalPublishedStoriesCount = 0,
                     totalVoiceActorsCount = 0
                 )
@@ -85,6 +83,10 @@ class AuthService (
     }
 
     fun getTokens(userId: ObjectId): TokenPair {
+
+//        refreshTokenRepo.findByUserId(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token not recognized")
+//        refreshTokenRepo.deleteByUserId(userId)
+
         val newAccessToken = jwtService.generateAccessToken(userId)
         val newRefreshToken = jwtService.generateRefereshToken(userId)
 
@@ -115,6 +117,25 @@ class AuthService (
         val digest = MessageDigest.getInstance("SHA-256")
         val hashBytes = digest.digest(rawToken.encodeToByteArray())
         return Base64.getEncoder().encodeToString(hashBytes)
+    }
+
+    fun logout(refreshToken: String) {
+
+        if (!jwtService.validateRefreshToken(refreshToken)) {
+            throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token")
+        }
+
+        val userId = jwtService.extractUserId(refreshToken)
+            ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token missing user ID")
+
+        val hashedToken = hashToken(refreshToken)
+
+        val deletedCount = refreshTokenRepo.deleteByUserIdAndHashedToken(ObjectId(userId), hashedToken)
+
+
+        if (deletedCount == 0L) {
+            throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token not found")
+        }
     }
 
 }
