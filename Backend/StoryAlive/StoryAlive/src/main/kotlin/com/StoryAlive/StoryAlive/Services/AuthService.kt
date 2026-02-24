@@ -84,8 +84,7 @@ class AuthService (
 
     fun getTokens(userId: ObjectId): TokenPair {
 
-//        refreshTokenRepo.findByUserId(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token not recognized")
-//        refreshTokenRepo.deleteByUserId(userId)
+        refreshTokenRepo.deleteByUserId(userId)
 
         val newAccessToken = jwtService.generateAccessToken(userId)
         val newRefreshToken = jwtService.generateRefereshToken(userId)
