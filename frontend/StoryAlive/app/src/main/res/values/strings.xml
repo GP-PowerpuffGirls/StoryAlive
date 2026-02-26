@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">StoryAlive</string>
+    <string name="title_activity_sign_up_activityy">SignUpActivityy</string>
+    <string name="title_activity_sign_up">SignUpActivity</string>
+    <string name="title_activity_login">LoginActivity</string>
+    <string name="title_activity_profile">ProfileActivity</string>
+    <string name="title_activity_settings">SettingsActivity</string>
+    <string name="title_activity_favorite_stories">FavoriteStoriesActivity</string>
+    <string name="title_activity_history">HistoryActivity</string>
+    <string name="title_activity_private_stories">privateStoriesActivity</string>
+    <string name="title_activity_published">PublishedActivity</string>
+    <string name="title_activity_upload">UploadActivity</string>
+    <string name="title_activity_voice_actor">VoiceActorActivity</string>
+    <string name="title_activity_story">StoryActivity</string>
+</resources>
