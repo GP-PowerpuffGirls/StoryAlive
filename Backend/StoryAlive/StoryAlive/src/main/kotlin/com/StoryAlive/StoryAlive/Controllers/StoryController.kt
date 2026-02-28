@@ -11,7 +11,9 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.multipart.MultipartFile
 
 
 @RestController
@@ -28,9 +30,10 @@ class StoryController(private val storyService: StoryService) {
                       @RequestParam(defaultValue = "10") pageSize:Int): Page<Story> {
         return storyService.getAllPrivateStories(pageNumber, pageSize);
     }
-    @PostMapping
-    fun CreateNewStory(@RequestBody storyRequestDTO: StoryRequestDTO): Story {
-        return storyService.createNewStory(storyRequestDTO);
+    @PostMapping(consumes = ["multipart/form-data"])
+    fun CreateNewStory(@RequestPart("file") file: MultipartFile,
+                       @RequestPart("data") storyRequestDTO: StoryRequestDTO): Story {
+        return storyService.createNewStory(file, storyRequestDTO);
     }
 
 }
