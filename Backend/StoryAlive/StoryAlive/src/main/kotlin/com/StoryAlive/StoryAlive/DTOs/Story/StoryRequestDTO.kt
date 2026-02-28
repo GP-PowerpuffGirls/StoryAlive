@@ -13,7 +13,6 @@ data class StoryRequestDTO(
     val isPrivate: Boolean,
     val hasSfx: Boolean,
     val hasBackgroundMusic: Boolean,
-    val pdfPath: String,
     val tags: List<Tags> = emptyList(),
     val minimumAge: Int
 

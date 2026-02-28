@@ -37,6 +37,16 @@ dependencies {
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
 
+	//Supabase
+	implementation("io.ktor:ktor-client-core:2.3.4")
+	implementation("io.ktor:ktor-client-cio:2.3.4")
+	//huggingface
+	implementation("com.squareup.okhttp3:okhttp:4.12.0")
+	implementation("com.squareup.retrofit2:retrofit:2.9.0")
+	implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+	implementation("com.google.code.gson:gson:2.10.1")
+	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
 	// Jackson Kotlin support
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
 	// JWT
