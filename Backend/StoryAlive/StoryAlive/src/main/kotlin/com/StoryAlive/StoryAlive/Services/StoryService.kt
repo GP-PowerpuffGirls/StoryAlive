@@ -2,8 +2,10 @@ package com.StoryAlive.StoryAlive.Services
 
 import Story
 import com.StoryAlive.StoryAlive.DTOs.CurrentUserDetails
+import com.StoryAlive.StoryAlive.DTOs.Story.StoryCreationDTO
 import com.StoryAlive.StoryAlive.DTOs.Story.StoryRequestDTO
 import com.StoryAlive.StoryAlive.Repositories.StoryRepo
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.bson.types.ObjectId
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
@@ -33,30 +35,8 @@ class StoryService(private val storyRepo: StoryRepo, private val supabaseStorage
         return storyRepo.findAllByCreatorIdAndIsPrivateTrue(creatorId, pageable)
     }
 
-    fun savePdfToCloud(pdf: MultipartFile, userId: ObjectId):String {
-        if (pdf.contentType != "application/pdf") {
-            throw IllegalArgumentException("Only PDF files are allowed")
-        }
-
-        val safeName = pdf.originalFilename!!.replace("\\s+".toRegex(), "_")
-        val path = "stories/${userId}/${UUID.randomUUID()}_${safeName}"
-
-        val pdfUrl = supabaseStorageService.uploadFile(
-            fileBytes = pdf.bytes,      // the actual PDF bytes
-            path = path,             // where it will live in Supabase
-            contentType = "application/pdf"  // MIME type for PDF
-        )
-        return pdfUrl
-    }
-    fun uploadJsonContent(jsonContent: String, userId: ObjectId): String {
-        val bytes = jsonContent.toByteArray()
-        val path = "stories/$userId/${UUID.randomUUID()}_story.json"
-        return supabaseStorageService.uploadFile(bytes, path, "application/json")
-    }
     fun createStoryMetaData(storyRequest: StoryRequestDTO): ObjectId {
-        val auth = SecurityContextHolder.getContext().authentication
-        require(auth != null && auth.principal is CurrentUserDetails)
-        val currentUser = auth.principal as CurrentUserDetails
+        val currentUser = getCurrrenctUser()
 
         val newStory = Story(
             storyId = ObjectId(),
@@ -81,54 +61,28 @@ class StoryService(private val storyRepo: StoryRepo, private val supabaseStorage
         storyRepo.save(newStory);
         return newStory.storyId;
     }
-    fun uploadFile(storyId: ObjectId, pdf: MultipartFile){
+
+    fun createStory(storyId: ObjectId, pdf: MultipartFile){
         val currentUser = getCurrrenctUser()
-        //val pdfPath = savePdfToCloud(pdf, currentUser.getUserId())
         val jsonString= aiService.createStoryFromPdf(pdf.bytes)
-        println(jsonString);
-        val currentStory: Story = storyRepo.findById(storyId)
-            .orElseThrow { RuntimeException("Story not found with id $storyId") }
-        //currentStory.pdfPath= pdfPath
-        //storyRepo.save(currentStory)
+        val storyDto: StoryCreationDTO = jacksonObjectMapper()
+            .readValue(jsonString, StoryCreationDTO::class.java);
+        println(storyDto)
+//        val currentStory: Story = storyRepo.findById(storyId)
+//            .orElseThrow { RuntimeException("Story not found with id $storyId") }
+//        val pdfPath = supabaseStorageService.savePdfToCloud(pdf, currentUser.getUserId())
+//        val jsonPath = supabaseStorageService.saveJsonToCloud(jsonString, currentUser.getUserId())
+//        currentStory.pdfPath= pdfPath
+//        currentStory.jsonPath= jsonPath
+//        storyRepo.save(currentStory)
     }
+
+    //HELPER FUNCTIONS
+
     fun getCurrrenctUser(): CurrentUserDetails{
         val auth = SecurityContextHolder.getContext().authentication
         require(auth != null && auth.principal is CurrentUserDetails)
         return auth.principal as CurrentUserDetails
-    }
-    fun createNewStory(pdf: MultipartFile, storyRequest: StoryRequestDTO):Story {
-
-        val currentUser = getCurrrenctUser()
-
-        //val pdfPath = savePdfToCloud(pdf, currentUser.getUserId())
-        val jsonString= aiService.createStoryFromPdf(pdf.bytes)
-        println(jsonString);
-
-        //val jsonPath= uploadJsonContent(jsonString, currentUser.getUserId())
-
-        //TODO: CALL THE TTS AND PASS THE JSON STRING TO IT
-        val newStory = Story(
-            creatorId = currentUser.getUserId(),
-            duration = 0.0, //from tts
-            title = storyRequest.title,
-            voiceActors = storyRequest.voiceActors ?: emptyMap(),
-            description = storyRequest.description ?: "",
-            tags = storyRequest.tags,
-            genre = storyRequest.genre,
-            isPrivate = storyRequest.isPrivate,
-            hasSfx = storyRequest.hasSfx,
-            hasBackgroundMusic = storyRequest.hasBackgroundMusic,
-            pdfPath = "",
-            minimumAge = storyRequest.minimumAge,
-            storyId = ObjectId(),
-            finalAudioPath = "", //from tts
-            jsonPath = "", //from llm
-            createdAt = java.time.Instant.now(),
-            modifiedAt = java.time.Instant.now(),
-            numberOfViews = 0
-        )
-        //return storyRepo.save(newStory);
-        return newStory;
     }
 
 }

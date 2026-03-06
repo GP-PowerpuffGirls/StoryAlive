@@ -4,9 +4,11 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.bson.types.ObjectId
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
+import java.util.UUID
 
 @Service
 class SupabaseStorageService(
@@ -17,32 +19,52 @@ class SupabaseStorageService(
 
     private val client = OkHttpClient()
 
-//    fun uploadPdf(file: MultipartFile, path: String): String {
-//
-//        val requestBody = file.bytes.toRequestBody("application/pdf".toMediaType())
-//
-//        val request = Request.Builder()
-//            .url("$supabaseUrl/storage/v1/object/$bucket/$path")
-//            .addHeader("Authorization", "Bearer $supabaseKey")
-//            .addHeader("apikey", supabaseKey)
-//            .put(requestBody)
-//            .build()
-//
-//        client.newCall(request).execute().use { response ->
-//            if (!response.isSuccessful) {
-//                throw RuntimeException("Supabase upload failed: ${response.body?.string()}")
-//            }
-//        }
-//
-//        // Public URL
-//        return "$supabaseUrl/storage/v1/object/public/$bucket/$path"
-//    }
+    fun savePdfToCloud(pdf: MultipartFile, userId: ObjectId):String {
+        if (pdf.contentType != "application/pdf") {
+            throw IllegalArgumentException("Only PDF files are allowed")
+        }
 
-    fun uploadFile(fileBytes: ByteArray, path: String, contentType: String): String {
+        val safeName = pdf.originalFilename!!.replace("\\s+".toRegex(), "_")
+        val path = "pdf-files/${userId}/${UUID.randomUUID()}_${safeName}"
+
+        val pdfUrl = uploadFile(
+            fileBytes = pdf.bytes,
+            path = path,
+            contentType = "application/pdf",
+            usedBucket = "files"
+        )
+        return pdfUrl
+    }
+
+    fun saveAudioToCloud(audio: MultipartFile, actorId: ObjectId): String {
+
+        val allowedTypes = listOf("audio/mpeg", "audio/wav", "audio/ogg")
+        if (audio.contentType !in allowedTypes) {
+            throw IllegalArgumentException("Only audio files (MP3, WAV, OGG) are allowed")
+        }
+        val safeName = audio.originalFilename!!.replace("\\s+".toRegex(), "_")
+        val path = "${actorId}/${UUID.randomUUID()}_$safeName"
+
+        val audioUrl = uploadFile(
+            fileBytes = audio.bytes,
+            path = path,
+            contentType = audio.contentType!!,
+            usedBucket = "voice-actor-files"
+        )
+        return audioUrl
+    }
+
+    fun saveJsonToCloud(jsonContent: String, userId: ObjectId): String {
+        val bytes = jsonContent.toByteArray()
+        val path = "json-files/$userId/${UUID.randomUUID()}_story.json"
+        return uploadFile(bytes, path, "application/json", usedBucket = "files")
+    }
+
+    fun uploadFile(fileBytes: ByteArray, path: String, contentType: String, usedBucket: String): String {
         val requestBody = fileBytes.toRequestBody(contentType.toMediaType())
 
         val request = Request.Builder()
-            .url("$supabaseUrl/storage/v1/object/$bucket/$path")
+            .url("$supabaseUrl/storage/v1/object/$usedBucket/$path")
             .addHeader("Authorization", "Bearer $supabaseKey")
             .addHeader("apikey", supabaseKey)
             .put(requestBody)
@@ -54,6 +76,6 @@ class SupabaseStorageService(
             }
         }
 
-        return "$supabaseUrl/storage/v1/object/public/$bucket/$path"
+        return "$supabaseUrl/storage/v1/object/public/$usedBucket/$path"
     }
 }

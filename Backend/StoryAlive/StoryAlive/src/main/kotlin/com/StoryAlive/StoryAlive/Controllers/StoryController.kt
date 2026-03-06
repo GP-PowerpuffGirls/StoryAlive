@@ -47,7 +47,7 @@ fun createStoryMetaData(@RequestBody storyRequestDTO: StoryRequestDTO): String{
         @PathVariable storyId: String,
         @RequestParam("file") file: MultipartFile
     ) {
-        storyService.uploadFile(ObjectId( storyId), file)
+        storyService.createStory(ObjectId( storyId), file)
     }
 
 }
