@@ -2,7 +2,6 @@ package com.StoryAlive.StoryAlive.Mappers
 
 import com.StoryAlive.StoryAlive.DTOs.UserSignupRequest
 import com.StoryAlive.StoryAlive.Models.User
-import org.bson.types.ObjectId
 
 fun UserSignupRequest.toUser(): User {
     return User(

@@ -1,10 +1,10 @@
 package com.StoryAlive.StoryAlive.Models
 
-import com.StoryAlive.StoryAlive.Enums.Tags
 import org.bson.types.ObjectId
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.index.Indexed
 import org.springframework.data.mongodb.core.mapping.Document
+import java.time.Instant
 
 @Document(collection = "users")
 data class User(
@@ -17,7 +17,7 @@ data class User(
     val age: Int,
     val favouriteStories: List<ObjectId> = emptyList(),
     val favouriteVoiceActors: List<ObjectId> = emptyList(),
-    val accountCreationDate: java.time.Instant = java.time.Instant.now(),
+    val accountCreationDate: Instant = Instant.now(),
     val totalPublishedStoriesCount: Int = 0,
     val totalVoiceActorsCount: Int = 0,
     val totalStoriesCount: Int = 0,

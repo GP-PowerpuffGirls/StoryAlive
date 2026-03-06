@@ -125,7 +125,6 @@ class AuthService (
         }
 
         val userId = jwtService.extractUserId(refreshToken)
-            ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token missing user ID")
 
         val hashedToken = hashToken(refreshToken)
 
