@@ -8,11 +8,15 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
+import java.util.concurrent.TimeUnit
 
 @Service
 class AIService(@Value("\${ai.model.url}") private val modelUrl: String) {
-    private val client = OkHttpClient()
-
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(6, TimeUnit.MINUTES)
+        .writeTimeout(2, TimeUnit.MINUTES)
+        .build()
     fun createStoryFromPdf(pdfBytes: ByteArray): String {
         val requestBody = MultipartBody.Builder()
             .setType(MultipartBody.FORM)

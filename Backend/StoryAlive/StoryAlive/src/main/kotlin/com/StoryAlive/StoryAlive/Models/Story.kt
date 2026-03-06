@@ -20,7 +20,7 @@ data class Story(
     val hasBackgroundMusic: Boolean,
     val finalAudioPath: String,
     val jsonPath: String, //to be added in service after llm
-    val pdfPath: String,
+    var pdfPath: String,
     val createdAt: Instant, //to be added in service
     val modifiedAt: Instant, //to be added in service
     val minimumAge: Int,

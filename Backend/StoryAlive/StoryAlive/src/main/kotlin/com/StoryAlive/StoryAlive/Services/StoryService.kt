@@ -53,15 +53,58 @@ class StoryService(private val storyRepo: StoryRepo, private val supabaseStorage
         val path = "stories/$userId/${UUID.randomUUID()}_story.json"
         return supabaseStorageService.uploadFile(bytes, path, "application/json")
     }
-    fun createNewStory(pdf: MultipartFile, storyRequest: StoryRequestDTO):Story {
-
+    fun createStoryMetaData(storyRequest: StoryRequestDTO): ObjectId {
         val auth = SecurityContextHolder.getContext().authentication
         require(auth != null && auth.principal is CurrentUserDetails)
         val currentUser = auth.principal as CurrentUserDetails
 
-        val pdfPath = savePdfToCloud(pdf, currentUser.getUserId())
+        val newStory = Story(
+            storyId = ObjectId(),
+            creatorId = currentUser.getUserId(),
+            duration = 0.0, //from tts
+            title = storyRequest.title,
+            voiceActors = storyRequest.voiceActors ?: emptyMap(),
+            description = storyRequest.description ?: "",
+            tags = storyRequest.tags,
+            genre = storyRequest.genre,
+            isPrivate = storyRequest.isPrivate,
+            hasSfx = storyRequest.hasSfx,
+            hasBackgroundMusic = storyRequest.hasBackgroundMusic,
+            pdfPath = "",
+            minimumAge = storyRequest.minimumAge,
+            finalAudioPath = "", //from tts
+            jsonPath = "", //from llm
+            createdAt = java.time.Instant.now(),
+            modifiedAt = java.time.Instant.now(),
+            numberOfViews = 0
+        )
+        storyRepo.save(newStory);
+        return newStory.storyId;
+    }
+    fun uploadFile(storyId: ObjectId, pdf: MultipartFile){
+        val currentUser = getCurrrenctUser()
+        //val pdfPath = savePdfToCloud(pdf, currentUser.getUserId())
         val jsonString= aiService.createStoryFromPdf(pdf.bytes)
-        val jsonPath= uploadJsonContent(jsonString, currentUser.getUserId())
+        println(jsonString);
+        val currentStory: Story = storyRepo.findById(storyId)
+            .orElseThrow { RuntimeException("Story not found with id $storyId") }
+        //currentStory.pdfPath= pdfPath
+        //storyRepo.save(currentStory)
+    }
+    fun getCurrrenctUser(): CurrentUserDetails{
+        val auth = SecurityContextHolder.getContext().authentication
+        require(auth != null && auth.principal is CurrentUserDetails)
+        return auth.principal as CurrentUserDetails
+    }
+    fun createNewStory(pdf: MultipartFile, storyRequest: StoryRequestDTO):Story {
+
+        val currentUser = getCurrrenctUser()
+
+        //val pdfPath = savePdfToCloud(pdf, currentUser.getUserId())
+        val jsonString= aiService.createStoryFromPdf(pdf.bytes)
+        println(jsonString);
+
+        //val jsonPath= uploadJsonContent(jsonString, currentUser.getUserId())
 
         //TODO: CALL THE TTS AND PASS THE JSON STRING TO IT
         val newStory = Story(
@@ -75,16 +118,17 @@ class StoryService(private val storyRepo: StoryRepo, private val supabaseStorage
             isPrivate = storyRequest.isPrivate,
             hasSfx = storyRequest.hasSfx,
             hasBackgroundMusic = storyRequest.hasBackgroundMusic,
-            pdfPath = pdfPath,
+            pdfPath = "",
             minimumAge = storyRequest.minimumAge,
             storyId = ObjectId(),
             finalAudioPath = "", //from tts
-            jsonPath = jsonPath, //from llm
+            jsonPath = "", //from llm
             createdAt = java.time.Instant.now(),
             modifiedAt = java.time.Instant.now(),
             numberOfViews = 0
         )
-        return storyRepo.save(newStory);
+        //return storyRepo.save(newStory);
+        return newStory;
     }
 
 }
