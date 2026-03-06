@@ -12,7 +12,8 @@ import kotlin.io.encoding.Base64
 @Service
 class JwtService ( @Value($$"${jwt.secret:}") private val jwtSecrete : String ) {
 
-    val accessTokenValidityMs = 120L * 60L * 1000L //
+//    ! Change access token to be 15-30 min
+    val accessTokenValidityMs = 120L * 60L * 1000L // 2 hours
     val refreshTokenValidityMs = 30L * 24 * 60 * 60 * 1000L // 30 days
 
     private val secretKey = Keys.hmacShaKeyFor(
