@@ -13,10 +13,11 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
+import org.springframework.web.multipart.MultipartFile
 import java.util.Optional
 
 @Service
-class VoiceActorService(val voiceActorRepo: VoiceActorRepo) {
+class VoiceActorService(val voiceActorRepo: VoiceActorRepo, val supabaseStorageService: SupabaseStorageService) {
 
     fun getAudio(actorId: ObjectId, emotion: Emotion, intensity: Intensity): Audio {
         val actor = voiceActorRepo.findAudioByEmotionAndIntensity(actorId, emotion, intensity) ?:
@@ -49,21 +50,23 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo) {
 
     }
 
-    fun createVoiceActor(request: VoiceActorRequest): VoiceActorRequest {
+    fun saveVoiceActor(request: VoiceActorRequest, files: List<MultipartFile>): VoiceActorRequest {
 
         val userId = getCurrentUserId()
 
         val savedActor: VoiceActor
         val actorName = request.actorName.trim().lowercase()
 
+        if (files.size != request.audios.size) throw IllegalArgumentException("Files count must match audio metadata count")
+        val audios = saveAudios(request, files, userId);
+
         if (request.isPrivate) {
 
             // PRIVATE FLOW
-            val existingPrivate =
-                voiceActorRepo.findByUserIdAndActorNameAndIsPrivateTrue(userId, actorName)
+            val existingPrivate = voiceActorRepo.findByUserIdAndActorNameAndIsPrivateTrue(userId, actorName)
 
             savedActor = if (existingPrivate != null) {
-                existingPrivate.audios += request.audios
+                existingPrivate.audios += audios
                 voiceActorRepo.save(existingPrivate)
             } else {
                 voiceActorRepo.save(
@@ -74,7 +77,7 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo) {
                         gender = request.gender,
                         isAdult = request.isAdult,
                         isPrivate = true,
-                        audios = request.audios
+                        audios = audios
                     )
                 )
             }
@@ -87,7 +90,7 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo) {
                 voiceActorRepo.findByActorNameAndIsPrivateFalse(actorName)
 
             savedActor = if (existingPublic != null) {
-                existingPublic.audios += request.audios
+                existingPublic.audios += audios
                 voiceActorRepo.save(existingPublic)
             } else {
                 voiceActorRepo.save(
@@ -98,7 +101,7 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo) {
                         gender = request.gender,
                         isAdult = request.isAdult,
                         isPrivate = false,
-                        audios = request.audios
+                        audios = audios
                     )
                 )
             }
@@ -109,8 +112,33 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo) {
             gender = savedActor.gender,
             isAdult = savedActor.isAdult,
             isPrivate = savedActor.isPrivate,
-            audios = savedActor.audios
+            audios = audios
         )
+    }
+
+    fun saveListVoiceActor(requests: List<VoiceActorRequest>, files: List<MultipartFile>): List<VoiceActorRequest> {
+
+        val results = mutableListOf<VoiceActorRequest>()
+        var fileIndex = 0
+
+        val expectedFiles = requests.sumOf { it.audios.size }
+        if (expectedFiles != files.size) throw IllegalArgumentException("Total files must match total audio metadata count")
+
+
+        for (request in requests) {
+
+            val audioCount = request.audios.size
+
+            val actorFiles = files.subList(fileIndex, fileIndex + audioCount)
+
+            val saved = saveVoiceActor(request, actorFiles)
+
+            results.add(saved)
+
+            fileIndex += audioCount
+        }
+
+        return results
     }
 
     private fun getCurrentUserId(): ObjectId {
@@ -119,6 +147,24 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo) {
             .authentication
             ?.principal as CurrentUserDetails
         return user.getUserId()
+    }
+
+    private fun saveAudios(request: VoiceActorRequest, files: List<MultipartFile>, userId: ObjectId): List<Audio>{
+
+        val audioUrls = files.map { file ->
+            supabaseStorageService.saveAudioToCloud(file, userId)
+        }
+
+        return audioUrls.mapIndexed { index, url ->
+            val meta = request.audios[index]
+
+            Audio(
+                filepath = url,
+                emotion = meta.emotion,
+                intensity = meta.intensity
+            )
+        }
+
     }
 }
 
