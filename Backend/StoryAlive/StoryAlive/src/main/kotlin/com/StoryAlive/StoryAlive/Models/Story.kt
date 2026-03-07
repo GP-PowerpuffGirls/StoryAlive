@@ -9,7 +9,7 @@ import java.time.Instant
 data class Story(
     @Id val storyId: ObjectId, //to be added in service
     val creatorId: ObjectId, //to be added in service
-    val voiceActors: Map<ObjectId, String>, //to be added in service after llm
+    var voiceActors: MutableMap<ObjectId, Pair<String, String>>, //to be added in service after llm
     val title: String,
     val description: String,
     val tags: List<Tags>,

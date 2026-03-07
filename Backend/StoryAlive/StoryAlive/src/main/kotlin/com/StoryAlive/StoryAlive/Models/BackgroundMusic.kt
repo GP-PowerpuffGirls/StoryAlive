@@ -1,8 +1,6 @@
 package com.StoryAlive.StoryAlive.Models
 
 import com.StoryAlive.StoryAlive.Enums.BGMusicEmotion
-import com.StoryAlive.StoryAlive.Enums.Emotion
-import com.StoryAlive.StoryAlive.Enums.Intensity
 import org.bson.types.ObjectId
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.mapping.Document
@@ -11,7 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document
 data class BackgroundMusic(
     @Id val musicId: ObjectId = ObjectId(),
     val musicPath: String,
-    val emotion: BGMusicEmotion,
+    val emotion: BGMusicEmotion?,
     val forKids: Boolean,
 
     )

@@ -1,12 +1,13 @@
 package com.StoryAlive.StoryAlive.DTOs.Story
 
 import com.StoryAlive.StoryAlive.Enums.Emotion
+import com.StoryAlive.StoryAlive.Enums.Intensity
 
 data class SentenceDto(
-    private val speaker: String,
-    private val sentenceId: String,
-    private val sentence: String,
-    private var prosodyReference: String,
-    private val emotion: Emotion,
-    private val intensity: Int
+    var speaker: String,
+    val sentenceId: String,
+    val sentence: String,
+    var prosodyReference: String,
+    val emotion: Emotion,
+    val intensity: Intensity
 )

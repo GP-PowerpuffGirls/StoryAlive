@@ -46,8 +46,13 @@ fun createStoryMetaData(@RequestBody storyRequestDTO: StoryRequestDTO): String{
     fun uploadStoryFile(
         @PathVariable storyId: String,
         @RequestParam("file") file: MultipartFile
-    ) {
-        storyService.createStory(ObjectId( storyId), file)
+    ):Story {
+        return storyService.createStory(ObjectId( storyId), file)
+    }
+    @PostMapping("/{storyId}")
+    fun uploadDummyStoryFile(
+        @PathVariable storyId: String, ) {
+        storyService.createStoryDummy(ObjectId( storyId))
     }
 
 }

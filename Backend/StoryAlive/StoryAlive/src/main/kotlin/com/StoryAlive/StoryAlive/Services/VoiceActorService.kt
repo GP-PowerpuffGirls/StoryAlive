@@ -2,6 +2,9 @@ package com.StoryAlive.StoryAlive.Services
 
 import com.StoryAlive.StoryAlive.DTOs.CurrentUserDetails
 import com.StoryAlive.StoryAlive.DTOs.VoiceActorRequest
+import com.StoryAlive.StoryAlive.Enums.Emotion
+import com.StoryAlive.StoryAlive.Enums.Intensity
+import com.StoryAlive.StoryAlive.Models.Audio
 import com.StoryAlive.StoryAlive.Models.VoiceActor
 import com.StoryAlive.StoryAlive.Repositories.VoiceActorRepo
 import org.bson.types.ObjectId
@@ -10,13 +13,24 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
+import java.util.Optional
 
 @Service
 class VoiceActorService(val voiceActorRepo: VoiceActorRepo) {
-
+    fun getAudio(actorId: ObjectId, emotion: Emotion, intensity: Intensity): Audio {
+        val actor = voiceActorRepo.findAudioByEmotionAndIntensity(actorId, emotion, intensity) ?:
+        throw RuntimeException("Audio not found")
+        return actor.audios.first()
+    }
     fun getAllPublicVoiceActors(pageNumber:Int, pageSize:Int): Page<VoiceActor> {
         val pageable: Pageable = PageRequest.of(pageNumber, pageSize);
         return voiceActorRepo.findAllByIsPrivateFalse(pageable);
+    }
+    fun getAllPublicVoiceActors(): ArrayList<VoiceActor> {
+        return voiceActorRepo.findAllByIsPrivateFalse();
+    }
+    fun getAudioByActorId(actorId: ObjectId): Optional<VoiceActor> {
+        return voiceActorRepo.findById(actorId)
     }
 
     fun getAllPrivateVoiceActorsOfUser(pageNumber: Int, pageSize: Int): Page<VoiceActor> {

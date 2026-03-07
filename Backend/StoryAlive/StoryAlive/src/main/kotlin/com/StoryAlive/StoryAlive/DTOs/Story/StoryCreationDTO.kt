@@ -1,7 +1,10 @@
 package com.StoryAlive.StoryAlive.DTOs.Story
 
+import lombok.Data
+
+
 data class StoryCreationDTO(
-    private val storyId: String,
-    private val chapters: ArrayList<ChapterDto>,
-    private val cast: ArrayList<CastDto>
+     var storyId: String? = null,
+     val chapters: ArrayList<ChapterDto>,
+     val cast: ArrayList<CastDto>
 )

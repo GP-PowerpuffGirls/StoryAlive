@@ -19,6 +19,22 @@ class SupabaseStorageService(
 
     private val client = OkHttpClient()
 
+    fun downloadFileFromSupabase(url: String): ByteArray {
+
+        val request = Request.Builder()
+            .url(url)
+            .get()
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw RuntimeException("Failed to fetch file: ${response.body?.string()}")
+            }
+
+            return response.body!!.bytes()
+        }
+    }
+
     fun savePdfToCloud(pdf: MultipartFile, userId: ObjectId):String {
         if (pdf.contentType != "application/pdf") {
             throw IllegalArgumentException("Only PDF files are allowed")
