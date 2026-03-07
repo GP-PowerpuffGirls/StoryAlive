@@ -23,6 +23,6 @@ interface VoiceActorRepo: MongoRepository<VoiceActor, ObjectId> {
     fun findAllByUserIdAndIsPrivateTrue(userId: ObjectId, pageable: Pageable): Page<VoiceActor>
     fun findByUserIdAndActorNameAndIsPrivateTrue(userId: ObjectId, actorName: String): VoiceActor?
     fun findByActorNameAndIsPrivateFalse(actorName: String): VoiceActor?
-    fun findAllByIsPrivateFalse(): ArrayList<VoiceActor>
+    fun findAllByIsPrivateFalse(): List<VoiceActor>
 
 }

@@ -17,30 +17,31 @@ import java.util.Optional
 
 @Service
 class VoiceActorService(val voiceActorRepo: VoiceActorRepo) {
+
     fun getAudio(actorId: ObjectId, emotion: Emotion, intensity: Intensity): Audio {
         val actor = voiceActorRepo.findAudioByEmotionAndIntensity(actorId, emotion, intensity) ?:
         throw RuntimeException("Audio not found")
-        return actor.audios.first()
+
+        return actor.audios.firstOrNull()
+            ?: throw RuntimeException("Audio not found")
     }
+
     fun getAllPublicVoiceActors(pageNumber:Int, pageSize:Int): Page<VoiceActor> {
         val pageable: Pageable = PageRequest.of(pageNumber, pageSize);
         return voiceActorRepo.findAllByIsPrivateFalse(pageable);
     }
-    fun getAllPublicVoiceActors(): ArrayList<VoiceActor> {
+
+    fun getAllPublicVoiceActors(): List<VoiceActor> {
         return voiceActorRepo.findAllByIsPrivateFalse();
     }
+
     fun getAudioByActorId(actorId: ObjectId): Optional<VoiceActor> {
         return voiceActorRepo.findById(actorId)
     }
 
     fun getAllPrivateVoiceActorsOfUser(pageNumber: Int, pageSize: Int): Page<VoiceActor> {
 
-        val currentUser = (SecurityContextHolder
-            .getContext()
-            .authentication
-            ?.principal) as CurrentUserDetails
-
-        val userId: ObjectId = currentUser.getUserId()
+        val userId = getCurrentUserId()
 
         val pageable: Pageable = PageRequest.of(pageNumber, pageSize);
 
@@ -48,63 +49,76 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo) {
 
     }
 
-    fun createVoiceActor(voiceActor: VoiceActorRequest) {
+    fun createVoiceActor(request: VoiceActorRequest): VoiceActorRequest {
 
-        val currentUser = SecurityContextHolder
-            .getContext()
-            .authentication
-            ?.principal as CurrentUserDetails
-        val userId = currentUser.getUserId()
+        val userId = getCurrentUserId()
 
-        // 1️⃣ Check private actor for this user
-        val existingPrivate = voiceActorRepo.findByUserIdAndActorNameAndIsPrivateTrue(userId, voiceActor.actorName)
+        val savedActor: VoiceActor
+        val actorName = request.actorName.trim().lowercase()
 
-        if (existingPrivate != null) {
-            existingPrivate.audios = existingPrivate.audios + voiceActor.audios
-            voiceActorRepo.save(existingPrivate)
-            return
-        }
+        if (request.isPrivate) {
 
-        // 2️⃣ Check public actor
-        val existingPublic = voiceActorRepo.findByActorNameAndIsPrivateFalse(voiceActor.actorName)
+            // PRIVATE FLOW
+            val existingPrivate =
+                voiceActorRepo.findByUserIdAndActorNameAndIsPrivateTrue(userId, actorName)
 
-        if (existingPublic != null) {
-
-            if (voiceActor.isPrivate) {
-                // create new private actor
+            savedActor = if (existingPrivate != null) {
+                existingPrivate.audios += request.audios
+                voiceActorRepo.save(existingPrivate)
+            } else {
                 voiceActorRepo.save(
                     VoiceActor(
                         voiceActorId = ObjectId(),
                         userId = userId,
-                        actorName = voiceActor.actorName,
-                        gender = voiceActor.gender,
-                        isAdult = voiceActor.isAdult,
+                        actorName = actorName,
+                        gender = request.gender,
+                        isAdult = request.isAdult,
                         isPrivate = true,
-                        audios = voiceActor.audios
+                        audios = request.audios
                     )
                 )
             }
-            else {
-                existingPublic.audios += voiceActor.audios
-                voiceActorRepo.save(existingPublic)
-            }
 
-            return
+        }
+        else {
+
+            // PUBLIC FLOW
+            val existingPublic =
+                voiceActorRepo.findByActorNameAndIsPrivateFalse(actorName)
+
+            savedActor = if (existingPublic != null) {
+                existingPublic.audios += request.audios
+                voiceActorRepo.save(existingPublic)
+            } else {
+                voiceActorRepo.save(
+                    VoiceActor(
+                        voiceActorId = ObjectId(),
+                        userId = null,
+                        actorName = actorName,
+                        gender = request.gender,
+                        isAdult = request.isAdult,
+                        isPrivate = false,
+                        audios = request.audios
+                    )
+                )
+            }
         }
 
-        // 3️⃣ Create new actor
-        voiceActorRepo.save(
-            VoiceActor(
-                voiceActorId = ObjectId(),
-                userId = userId,
-                actorName = voiceActor.actorName,
-                gender = voiceActor.gender,
-                isAdult = voiceActor.isAdult,
-                isPrivate = voiceActor.isPrivate,
-                audios = voiceActor.audios
-            )
+        return VoiceActorRequest(
+            actorName = savedActor.actorName,
+            gender = savedActor.gender,
+            isAdult = savedActor.isAdult,
+            isPrivate = savedActor.isPrivate,
+            audios = savedActor.audios
         )
     }
 
+    private fun getCurrentUserId(): ObjectId {
+        val user = SecurityContextHolder
+            .getContext()
+            .authentication
+            ?.principal as CurrentUserDetails
+        return user.getUserId()
+    }
 }
 

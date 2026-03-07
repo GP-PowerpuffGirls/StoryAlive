@@ -7,14 +7,17 @@ import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
+@RequestMapping("/voice-actors")
 class VoiceActorController(private val voiceActorService: VoiceActorService){
 
-    @GetMapping("/voice-actors")
+    @GetMapping
     fun getAllPublicVoiceActors(
         @RequestParam(defaultValue = "0") pageNumber:Int,
         @RequestParam(defaultValue = "10") pageSize:Int): List<VoiceActor>
@@ -22,7 +25,7 @@ class VoiceActorController(private val voiceActorService: VoiceActorService){
         return voiceActorService.getAllPublicVoiceActors(pageNumber, pageSize).content
     }
 
-    @GetMapping("/voice-actors/private")
+    @GetMapping("/private")
     fun getAllPrivateVoiceActorsOfUser(
         @RequestParam(defaultValue = "0") pageNumber:Int,
         @RequestParam(defaultValue = "10") pageSize:Int
@@ -30,9 +33,10 @@ class VoiceActorController(private val voiceActorService: VoiceActorService){
         return voiceActorService.getAllPrivateVoiceActorsOfUser(pageNumber, pageSize).content
     }
 
-    fun createPrivateVoiceActor( @Valid @RequestBody voiceActor: VoiceActorRequest): ResponseEntity<String> {
-        voiceActorService.createVoiceActor(voiceActor)
-        return ResponseEntity.status(HttpStatus.CREATED).body("Voice actor created successfully")
+    @PostMapping
+    fun createPrivateVoiceActor( @Valid @RequestBody voiceActor: VoiceActorRequest): ResponseEntity<VoiceActorRequest> {
+        val createdVoiceActor = voiceActorService.createVoiceActor(voiceActor)
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdVoiceActor)
     }
 
 }
