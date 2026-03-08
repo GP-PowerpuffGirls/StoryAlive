@@ -2,6 +2,7 @@ package com.example.storyalive
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -58,11 +60,17 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Divider
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import com.example.storyalive.model.UserSignupRequest
+import com.example.storyalive.network.RetrofitClient
 import com.example.storyalive.ui.theme.themeColors
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class SignUpActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,14 +87,19 @@ class SignUpActivity : ComponentActivity() {
         }
     }
 }
+val availableTags = listOf(
+    "HORROR", "LOVE", "SADNESS", "DRAMA", "DARK", "EMOTIONAL",
+    "MYSTERY", "ACTION", "SUPERNATURAL", "RELATIONSHIPS",
+    "KIDS", "INTENSE", "EDUCATIONAL", "SELF_HELP", "GRIEF",
+    "HAS_SFX", "HAS_BGMUSIC"
+)
 
 @Composable
 fun SignUpScreen(
-    isLightTheme: Boolean = true,
-    onSignupClick: () -> Unit = {},
-    onLoginClick: () -> Unit = {}
+    isLightTheme: Boolean = true
 ) {
     val colors = themeColors(isLightTheme)
+    val context = LocalContext.current
 
     var showPassword by remember { mutableStateOf(false) }
     var showConfirmPassword by remember { mutableStateOf(false) }
@@ -97,6 +110,7 @@ fun SignUpScreen(
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var age by remember { mutableStateOf("") }
+    val selectedTags = remember { mutableStateListOf<String>() }
 
     Box(
         modifier = Modifier
@@ -212,8 +226,105 @@ fun SignUpScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+
+                Text(
+                    text = "Select your preferences",
+                    color = colors.text,
+                    fontWeight = FontWeight.Medium
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Column {
+                    availableTags.forEach { tag ->
+                        var checked by remember { mutableStateOf(false) }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp)
+                        ) {
+                            Checkbox(
+                                checked = checked,
+                                onCheckedChange = { isChecked ->
+                                    checked = isChecked
+                                    if (isChecked) selectedTags.add(tag)
+                                    else selectedTags.remove(tag)
+                                },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = colors.accent,
+                                    uncheckedColor = colors.muted
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = tag, color = colors.text)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
                 Button(
-                    onClick = { onSignupClick() },
+                    onClick = {
+
+                        if (password != confirmPassword) {
+                            Toast.makeText(context, "Passwords do not match", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        if (age.toIntOrNull() == null || age.toInt() < 5) {
+                            Toast.makeText(context, "Age must be ≥ 5", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        if (selectedTags.isEmpty()) {
+                            Toast.makeText(context, "Please select at least one tag", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        val passwordRegex = Regex("^(?=.*[A-Za-z])(?=.*\\d).{8,}$")
+                        if (!passwordRegex.matches(password)) {
+                            Toast.makeText(context, "Password must be at least 8 chars, include letters and numbers", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+
+                        val request = UserSignupRequest(
+                            firstName = firstName,
+                            lastName = lastName,
+                            email = email,
+                            password = password,
+                            age = age.toIntOrNull() ?: 5,
+                            preferencesTags = selectedTags.toList()
+                        )
+
+                        CoroutineScope(Dispatchers.IO).launch {
+
+                            try {
+
+                                val response = RetrofitClient.api.signup(request)
+
+                                if (response.isSuccessful) {
+
+                                    val tokens = response.body()
+
+                                    println("Access Token: ${tokens?.accessToken}")
+                                    println("Refresh Token: ${tokens?.refreshToken}")
+                                    CoroutineScope(Dispatchers.Main).launch {
+                                        Toast.makeText(context, "Signup successful!", Toast.LENGTH_SHORT).show()
+                                        context.startActivity(Intent(context, PublishedActivity::class.java))
+                                    }
+
+                                } else {
+
+                                    println("Signup failed")
+
+                                }
+
+                            } catch (e: Exception) {
+
+                                println("Error: ${e.message}")
+
+                            }
+                        }
+                    },
+
                     colors = ButtonDefaults.buttonColors(
                         containerColor = colors.accent
                     ),
@@ -241,7 +352,6 @@ fun SignUpScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                val context = LocalContext.current
 
                 OutlinedButton(
                     onClick = {

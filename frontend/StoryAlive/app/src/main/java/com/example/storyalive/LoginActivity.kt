@@ -1,7 +1,9 @@
 package com.example.storyalive
 
+import android.content.Context.MODE_PRIVATE
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -51,7 +53,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import com.example.storyalive.model.UserLoginRequest
+import com.example.storyalive.network.RetrofitClient
 import com.example.storyalive.ui.theme.themeColors
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 
 class LoginActivity : ComponentActivity() {
@@ -72,16 +79,15 @@ class LoginActivity : ComponentActivity() {
 
 @Composable
 fun LoginScreen(
-    isLightTheme: Boolean = true,
-    onLoginClick: () -> Unit = {},
-    onSignupClick: () -> Unit = {}
+    isLightTheme: Boolean = true
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
 
-    // Get colors from Color.kt
+
     val colors = themeColors(isLightTheme)
+    val context = LocalContext.current
 
     Box(
         modifier = Modifier
@@ -103,7 +109,6 @@ fun LoginScreen(
                     .verticalScroll(rememberScrollState())
             ) {
 
-                // Header
                 Text(
                     text = "Welcome Back",
                     fontSize = 28.sp,
@@ -124,7 +129,6 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Email
                 CustomTextField(
                     label = "Email Address",
                     value = email,
@@ -138,7 +142,6 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Password
                 PasswordField(
                     label = "Password",
                     value = password,
@@ -151,12 +154,55 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Login Button
                 Button(
-                    onClick = { onLoginClick() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colors.accent
-                    ),
+                    onClick = {
+
+                        if (email.isBlank() || password.isBlank()) {
+                            Toast.makeText(
+                                context,
+                                "Please enter email and password",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            return@Button
+                        }
+
+                        val request = UserLoginRequest(
+                            email = email,
+                            password = password
+                        )
+
+                        CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                val response = RetrofitClient.api.login(request)
+
+                                if (response.isSuccessful) {
+                                    val tokens = response.body()
+                                    println("Access Token: ${tokens?.accessToken}")
+                                    println("Refresh Token: ${tokens?.refreshToken}")
+
+                                    context.getSharedPreferences("app_prefs", MODE_PRIVATE).edit()
+                                        .putString("access_token", tokens?.accessToken)
+                                        .putString("refresh_token", tokens?.refreshToken)
+                                        .apply()
+
+                                    context.startActivity(Intent(context, PublishedActivity::class.java))
+
+                                } else {
+                                    println("Login failed")
+                                    CoroutineScope(Dispatchers.Main).launch {
+                                        Toast.makeText(context, "Login failed: ${response.code()}", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+
+                            } catch (e: Exception) {
+                                println("Error: ${e.message}")
+                                CoroutineScope(Dispatchers.Main).launch {
+                                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
