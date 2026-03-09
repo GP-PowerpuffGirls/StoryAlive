@@ -1,6 +1,7 @@
 package com.StoryAlive.StoryAlive.DTOs
 
 import com.StoryAlive.StoryAlive.Enums.Gender
+import com.StoryAlive.StoryAlive.Enums.PreferredRole
 import com.StoryAlive.StoryAlive.Models.Audio
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotEmpty
@@ -15,5 +16,7 @@ data class VoiceActorRequest (
     val isAdult: Boolean = true,
     @field:NotNull
     val isPrivate: Boolean,
-    val audios: @NotEmpty List<Audio>
+    val audios: @NotEmpty List<Audio>,
+    var preferredRole: PreferredRole? = PreferredRole.NONE
+
 )

@@ -52,13 +52,13 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo, val supabaseStorageS
 
     fun saveVoiceActor(request: VoiceActorRequest, files: List<MultipartFile>): VoiceActorRequest {
 
+        if (files.size != request.audios.size) throw IllegalArgumentException("Files count must match audio metadata count")
         val userId = getCurrentUserId()
 
         val savedActor: VoiceActor
         val actorName = request.actorName.trim().lowercase()
-
-        if (files.size != request.audios.size) throw IllegalArgumentException("Files count must match audio metadata count")
-        val audios = saveAudios(request, files, userId);
+        val voiceActorId = ObjectId();
+        val audios = saveAudios(request, files, voiceActorId);
 
         if (request.isPrivate) {
 
@@ -71,13 +71,14 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo, val supabaseStorageS
             } else {
                 voiceActorRepo.save(
                     VoiceActor(
-                        voiceActorId = ObjectId(),
+                        voiceActorId = voiceActorId,
                         userId = userId,
                         actorName = actorName,
                         gender = request.gender,
                         isAdult = request.isAdult,
                         isPrivate = true,
-                        audios = audios
+                        audios = audios,
+                        preferredRole = request.preferredRole
                     )
                 )
             }
@@ -101,7 +102,8 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo, val supabaseStorageS
                         gender = request.gender,
                         isAdult = request.isAdult,
                         isPrivate = false,
-                        audios = audios
+                        audios = audios,
+                        preferredRole = request.preferredRole
                     )
                 )
             }
@@ -112,18 +114,18 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo, val supabaseStorageS
             gender = savedActor.gender,
             isAdult = savedActor.isAdult,
             isPrivate = savedActor.isPrivate,
-            audios = audios
+            audios = audios,
+            preferredRole = savedActor.preferredRole
         )
     }
 
     fun saveListVoiceActor(requests: List<VoiceActorRequest>, files: List<MultipartFile>): List<VoiceActorRequest> {
 
-        val results = mutableListOf<VoiceActorRequest>()
-        var fileIndex = 0
-
         val expectedFiles = requests.sumOf { it.audios.size }
         if (expectedFiles != files.size) throw IllegalArgumentException("Total files must match total audio metadata count")
 
+        val results = mutableListOf<VoiceActorRequest>()
+        var fileIndex = 0
 
         for (request in requests) {
 

@@ -114,7 +114,7 @@ class StoryService(private val storyRepo: StoryRepo,
             .mapValues { it.value.map { actor -> actor.voiceActorId to actor.actorName }.toMutableList() }
             .toMutableMap()
 
-        // 1️⃣ Assign user-selected actors first
+        // Assign user-selected actors first
         val mutableVoiceActors = currentStory.voiceActors.toMutableMap()
         currentStory.voiceActors.forEach { (actorId, pair) ->
             val actor = voiceActorService.getAudioByActorId(actorId)
@@ -124,7 +124,7 @@ class StoryService(private val storyRepo: StoryRepo,
             mutableVoiceActors[actorId] = pair
         }
 
-        // 2️⃣ Assign remaining actors to cast members
+        // Assign remaining actors to cast members
         storyDto.cast.forEach { castMember ->
             val key = VoiceActorKey(castMember.isAdult, castMember.gender)
             val availableActors = actorsMap[key] ?: throw RuntimeException("No available actor for cast member ${castMember.name} with $key")
@@ -133,7 +133,7 @@ class StoryService(private val storyRepo: StoryRepo,
         }
         currentStory.voiceActors = mutableVoiceActors
 
-        // 3️⃣ Assign audio to title and sentences
+        // Assign audio to title and sentences
         val castMap: MutableMap<CastKey, Audio> = mutableMapOf()
         storyDto.chapters.forEach { chapter ->
             val sentences = listOf(chapter.title) + chapter.scenes.flatMap { it.sentences }
@@ -148,7 +148,7 @@ class StoryService(private val storyRepo: StoryRepo,
             }
         }
 
-        // 4️⃣ Save updated JSON back to Supabase
+        // Save updated JSON back to Supabase
         val updatedJson = mapper.writeValueAsString(storyDto)
         val jsonPath = supabaseStorageService.saveJsonToCloud(updatedJson, getCurrrenctUser().getUserId())
         currentStory.jsonPath = jsonPath

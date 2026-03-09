@@ -1,6 +1,7 @@
 package com.StoryAlive.StoryAlive.Models
 
 import com.StoryAlive.StoryAlive.Enums.Gender
+import com.StoryAlive.StoryAlive.Enums.PreferredRole
 import jakarta.validation.constraints.NotEmpty
 import org.bson.types.ObjectId
 import org.springframework.data.annotation.Id
@@ -20,7 +21,8 @@ data class VoiceActor(
     val gender: Gender,
     val isAdult: Boolean = true,
     val isPrivate: Boolean,
-    var audios: @NotEmpty List<Audio>
+    var audios: @NotEmpty List<Audio>,
+    var preferredRole: PreferredRole?= PreferredRole.NONE
 ){
     init {
         require(audios.isNotEmpty()) { "VoiceActor must have at least one audio" }

@@ -8,7 +8,7 @@ import java.time.Instant
 @Document(collection = "stories")
 data class Story(
     @Id val storyId: ObjectId, //to be added in service
-    val creatorId: ObjectId, //to be added in service
+    var creatorId: ObjectId, //to be added in service
     var voiceActors: MutableMap<ObjectId, Pair<String, String>>, //to be added in service after llm
     val title: String,
     val description: String,
