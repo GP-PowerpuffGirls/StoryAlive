@@ -46,7 +46,7 @@ class VoiceActorController(private val voiceActorService: VoiceActorService){
         return ResponseEntity.status(HttpStatus.CREATED).body(createdVoiceActor)
     }
 
-    @PostMapping("/list")
+    @PostMapping("/list", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun createVoiceActorList(@Valid @RequestPart("request")  requests: List<VoiceActorRequest>, @RequestPart("files") files: List<MultipartFile>): ResponseEntity<List<VoiceActorRequest>> {
         val createdActors = voiceActorService.saveListVoiceActor(requests, files)
         return ResponseEntity.status(HttpStatus.CREATED).body(createdActors)
