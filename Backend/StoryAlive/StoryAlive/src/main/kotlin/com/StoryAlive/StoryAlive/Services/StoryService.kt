@@ -6,9 +6,15 @@ import com.StoryAlive.StoryAlive.DTOs.Story.StoryCreationDTO
 import com.StoryAlive.StoryAlive.DTOs.Story.StoryRequestDTO
 import com.StoryAlive.StoryAlive.DTOs.Key.CastKey
 import com.StoryAlive.StoryAlive.DTOs.Key.VoiceActorKey
+import com.StoryAlive.StoryAlive.Enums.BGMusicEmotion
 import com.StoryAlive.StoryAlive.Enums.Emotion
+import com.StoryAlive.StoryAlive.Enums.Genre
 import com.StoryAlive.StoryAlive.Enums.Intensity
+import com.StoryAlive.StoryAlive.Enums.LocationName
+import com.StoryAlive.StoryAlive.Enums.PreferredRole
 import com.StoryAlive.StoryAlive.Models.Audio
+import com.StoryAlive.StoryAlive.Models.BackgroundMusic
+import com.StoryAlive.StoryAlive.Models.Location
 import com.StoryAlive.StoryAlive.Models.VoiceActor
 import com.StoryAlive.StoryAlive.Repositories.StoryRepo
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -19,49 +25,103 @@ import org.springframework.data.domain.Pageable
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
+import java.util.Base64
 import java.util.Optional
+import kotlin.collections.component1
+import kotlin.collections.component2
+
 
 @Service
 class StoryService(private val storyRepo: StoryRepo,
                    private val supabaseStorageService: SupabaseStorageService,
-                   private val aiService: AIService,
-                   private val voiceActorService: VoiceActorService) {
+                   private val llmService: LLMService,
+                   private val ttsService: TTSService,
+                   private val voiceActorService: VoiceActorService,
+                   private val bgMusicService: BGMusicService,
+                   private val locationService: LocationService,
+                   private val userService: UserService) {
     val mapper = jacksonObjectMapper()
 
     fun getAllStories(pageNumber: Int, pageSize: Int): Page<Story> {
         val pageable: Pageable = PageRequest.of(pageNumber, pageSize)
         return storyRepo.findAllByIsPrivateFalse(pageable)
     }
+
     fun getAllPrivateStories(pageNumber: Int, pageSize: Int): Page<Story> {
         val pageable = PageRequest.of(pageNumber, pageSize)
-
-        val currentUser = (SecurityContextHolder
-            .getContext()
-            .authentication
-            ?.principal) as CurrentUserDetails
-
-        val creatorId: ObjectId = currentUser.getUserId()
-
+        val creatorId: ObjectId = userService.getCurrrenctUser().getUserId()
         return storyRepo.findAllByCreatorIdAndIsPrivateTrue(creatorId, pageable)
     }
 
-    fun createStoryMetaData(storyRequest: StoryRequestDTO): ObjectId {
-        val currentUser = getCurrrenctUser()
+    fun createStory(storyRequest: StoryRequestDTO, pdf: MultipartFile): Story {
+        val userId = userService.getCurrrenctUser().getUserId()
+        val jsonString = llmService.generateStoryFromPdf(pdf.bytes)
+        val storyDto: StoryCreationDTO = mapper.readValue(jsonString, StoryCreationDTO::class.java)
+        val currentStory= createStoryMetaData(storyRequest)
+        storyDto.storyId = currentStory.storyId.toString()
+        assignActorsToCast(currentStory, storyDto)
+        if (currentStory.hasBackgroundMusic) {
+            assignBGMusicToScene(currentStory, storyDto)
+        }
+        if (currentStory.hasSfx) {
+            assignSfxToScene(storyDto)
+        }
+        val ttsResponse = ttsService.generateAudioFromStory(storyDto)
+        val audioBytes = Base64.getDecoder().decode(ttsResponse.audioBase64)
 
-        val voiceActorsMap: MutableMap<ObjectId, Pair<String, String>> = (if (storyRequest.voiceActors.isNullOrEmpty()) {
-            emptyMap()
-        } else {
-            storyRequest.voiceActors.mapValues { (actorId) ->
-                val actor: Optional<VoiceActor> = voiceActorService.getAudioByActorId(actorId)
-                if (actor != null && actor.get().audios.isNotEmpty()) {
-                    // Use the actor's name along with the cast name
-                    Pair(actor.get().actorName, "")
-                } else {
-                    // Fallback if somehow the actor has no audios (unlikely)
-                    Pair("", "")
+        val updatedJson = mapper.writeValueAsString(storyDto)
+        val audioPath = supabaseStorageService.saveAudioToCloud(audioBytes, ttsResponse.fileName, currentStory.storyId)
+        val jsonPath = supabaseStorageService.saveJsonToCloud(updatedJson, userId)
+        val pdfPath = supabaseStorageService.savePdfToCloud(pdf, userId)
+
+        currentStory.duration = ttsResponse.duration
+        currentStory.finalAudioPath = audioPath
+        currentStory.pdfPath = pdfPath
+        currentStory.jsonPath = jsonPath
+        return storyRepo.save(currentStory)
+    }
+
+    fun createStoryDummy(storyId: ObjectId): Story {
+        val currentStory: Story = storyRepo.findById(storyId)
+            .orElseThrow { RuntimeException("Story not found with id $storyId") }
+
+        val jsonString = supabaseStorageService.downloadFileFromSupabase(currentStory.jsonPath ?: "")
+        val storyDto: StoryCreationDTO = mapper.readValue(jsonString, StoryCreationDTO::class.java)
+        assignActorsToCast(currentStory, storyDto)
+        if (currentStory.hasBackgroundMusic) {
+            assignBGMusicToScene(currentStory, storyDto)
+        }
+        if (currentStory.hasSfx) {
+            assignSfxToScene(storyDto)
+        }
+        val ttsResponse = ttsService.generateAudioFromStory(storyDto)
+        val audioBytes = Base64.getDecoder().decode(ttsResponse.audioBase64)
+        val audioPath = supabaseStorageService.saveAudioToCloud(audioBytes, ttsResponse.fileName, currentStory.storyId)
+        val updatedJson = mapper.writeValueAsString(storyDto)
+        val jsonPath = supabaseStorageService.saveJsonToCloud(updatedJson, userService.getCurrrenctUser().getUserId())
+        currentStory.duration = ttsResponse.duration
+        currentStory.finalAudioPath = audioPath
+        currentStory.jsonPath = jsonPath
+        return storyRepo.save(currentStory)
+    }
+
+    //HELPER FUNCTIONS
+    fun createStoryMetaData(storyRequest: StoryRequestDTO): Story {
+        val currentUser = userService.getCurrrenctUser()
+
+        val voiceActorsMap: MutableMap<ObjectId, Pair<String, String>> =
+            (if (storyRequest.voiceActors.isNullOrEmpty()) {
+                emptyMap()
+            } else {
+                storyRequest.voiceActors.mapValues { (actorId) ->
+                    val actor: Optional<VoiceActor> = voiceActorService.getAudioByActorId(actorId)
+                    if (actor != null && actor.get().audios.isNotEmpty()) {
+                        Pair(actor.get().actorName, "")
+                    } else {
+                        Pair("", "")
+                    }
                 }
-            }
-        }) as MutableMap<ObjectId, Pair<String, String>>
+            }) as MutableMap<ObjectId, Pair<String, String>>
 
         val newStory = Story(
             storyId = ObjectId(),
@@ -83,24 +143,46 @@ class StoryService(private val storyRepo: StoryRepo,
             modifiedAt = java.time.Instant.now(),
             numberOfViews = 0
         )
-        storyRepo.save(newStory)
-        return newStory.storyId
-    }
-    fun createStory(storyId: ObjectId, pdf: MultipartFile): Story{
-        val jsonString = aiService.generateStoryFromPdf(pdf.bytes)
-        val storyDto: StoryCreationDTO = mapper.readValue(jsonString, StoryCreationDTO::class.java)
-        storyDto.storyId = storyId.toString()
-        return saveMetaData(storyDto,pdf, jsonString = jsonString)
+        return newStory
     }
 
-    //HELPER FUNCTIONS
-    fun createStoryDummy(storyId: ObjectId) {
-        val currentStory: Story = storyRepo.findById(storyId)
-            .orElseThrow { RuntimeException("Story not found with id $storyId") }
+    fun assignBGMusicToScene(currentStory: Story, storyDto: StoryCreationDTO) {
+        val allBGMusic: List<BackgroundMusic> = bgMusicService.getAllBGMusicByForKids(currentStory.genre == Genre.KIDS)
+        val bgMusicMap: Map<BGMusicEmotion?, List<String>> = allBGMusic.groupBy(
+            { it.emotion },
+            { it.musicPath }
+        )
+        for (chapter in storyDto.chapters) {
+            for (scene in chapter.scenes) {
+                val bgMusicPath = bgMusicMap[scene.bgMusic.emotion]
+                if (bgMusicPath != null) {
+                    bgMusicMap[scene.bgMusic.emotion]?.random()?.let { path ->
+                        scene.bgMusic.musicPath = path
+                    }
+                }
+            }
 
-        val jsonString = supabaseStorageService.downloadFileFromSupabase(currentStory.jsonPath ?: "")
-        val storyDto: StoryCreationDTO = mapper.readValue(jsonString, StoryCreationDTO::class.java)
+        }
+    }
 
+    fun assignSfxToScene(storyDto: StoryCreationDTO) {
+        val allSfx: List<Location> = locationService.getAllLocationsList()
+        val sfxMap: Map<LocationName?, String> = allSfx.associateBy(
+            { it.locationName },
+            { it.sfxPath }
+        )
+        for (chapter in storyDto.chapters) {
+            for (scene in chapter.scenes) {
+                if(scene.location.locationName == LocationName.NONE) continue;
+                val bgMusicPath = sfxMap[scene.location.locationName]
+                if (bgMusicPath != null) {
+                    scene.bgMusic.musicPath = bgMusicPath
+                }
+            }
+        }
+    }
+
+    fun assignActorsToCast(currentStory: Story, storyDto: StoryCreationDTO) {
         val allVoiceActors: List<VoiceActor> = voiceActorService.getAllPublicVoiceActors()
 
         // Build audio lookup for fast access
@@ -110,7 +192,7 @@ class StoryService(private val storyRepo: StoryRepo,
 
         // Build mutable pool of actors by VoiceActorKey
         val actorsMap: MutableMap<VoiceActorKey, MutableList<Pair<ObjectId, String>>> = allVoiceActors
-            .groupBy { VoiceActorKey(it.isAdult, it.gender) }
+            .groupBy { VoiceActorKey(it.isAdult, it.gender, it.preferredRole) }
             .mapValues { it.value.map { actor -> actor.voiceActorId to actor.actorName }.toMutableList() }
             .toMutableMap()
 
@@ -119,15 +201,19 @@ class StoryService(private val storyRepo: StoryRepo,
         currentStory.voiceActors.forEach { (actorId, pair) ->
             val actor = voiceActorService.getAudioByActorId(actorId)
                 .orElseThrow { RuntimeException("VoiceActor not found: $actorId") }
-            val key = VoiceActorKey(actor.isAdult, actor.gender)
+            val key = VoiceActorKey(actor.isAdult, actor.gender, actor.preferredRole)
             actorsMap[key]?.removeIf { it.first == actorId }
             mutableVoiceActors[actorId] = pair
         }
 
         // Assign remaining actors to cast members
         storyDto.cast.forEach { castMember ->
-            val key = VoiceActorKey(castMember.isAdult, castMember.gender)
-            val availableActors = actorsMap[key] ?: throw RuntimeException("No available actor for cast member ${castMember.name} with $key")
+            if (castMember.name.equals("راوي")) {
+                castMember.preferredRole = PreferredRole.NARRATOR;
+            }
+            val key = VoiceActorKey(castMember.isAdult, castMember.gender, castMember.preferredRole)
+            val availableActors = actorsMap[key]
+                ?: throw RuntimeException("No available actor for cast member ${castMember.name} with $key")
             val selectedActor = availableActors.removeAt(0)
             mutableVoiceActors[selectedActor.first] = selectedActor.second to castMember.name
         }
@@ -147,28 +233,7 @@ class StoryService(private val storyRepo: StoryRepo,
                 sentence.speaker = audio.filepath
             }
         }
-
-        // Save updated JSON back to Supabase
-        val updatedJson = mapper.writeValueAsString(storyDto)
-        val jsonPath = supabaseStorageService.saveJsonToCloud(updatedJson, getCurrrenctUser().getUserId())
-        currentStory.jsonPath = jsonPath
-        storyRepo.save(currentStory)
     }
 
-    fun saveMetaData(storyDto: StoryCreationDTO, pdf: MultipartFile,jsonString: String): Story {
-        val currentUser = getCurrrenctUser()
-        val currentStory: Story = storyRepo.findById(ObjectId(storyDto.storyId))
-            .orElseThrow { RuntimeException("Story not found with id ${storyDto.storyId}") }
-        val pdfPath = supabaseStorageService.savePdfToCloud(pdf, currentUser.getUserId())
-        val jsonPath = supabaseStorageService.saveJsonToCloud(jsonString, currentUser.getUserId())
-        currentStory.pdfPath= pdfPath
-        currentStory.jsonPath= jsonPath
-        return storyRepo.save(currentStory)
-    }
-    fun getCurrrenctUser(): CurrentUserDetails{
-        val auth = SecurityContextHolder.getContext().authentication
-        require(auth != null && auth.principal is CurrentUserDetails)
-        return auth.principal as CurrentUserDetails
-    }
 
 }

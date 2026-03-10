@@ -1,7 +1,9 @@
 package com.StoryAlive.StoryAlive.DTOs.Story
 
+import com.StoryAlive.StoryAlive.Enums.BGMusicEmotion
+
 data class BGMusicDto(
-    val musicPath: String? = "",
-    val emotion: String,
+    var musicPath: String? = "",
+    val emotion: BGMusicEmotion,
     val volume: Float
 )

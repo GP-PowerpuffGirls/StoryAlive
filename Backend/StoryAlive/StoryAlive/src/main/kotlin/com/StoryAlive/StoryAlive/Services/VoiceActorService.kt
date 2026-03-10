@@ -17,7 +17,7 @@ import org.springframework.web.multipart.MultipartFile
 import java.util.Optional
 
 @Service
-class VoiceActorService(val voiceActorRepo: VoiceActorRepo, val supabaseStorageService: SupabaseStorageService) {
+class VoiceActorService(val voiceActorRepo: VoiceActorRepo, val supabaseStorageService: SupabaseStorageService, val userService: UserService) {
 
     fun getAudio(actorId: ObjectId, emotion: Emotion, intensity: Intensity): Audio {
         val actor = voiceActorRepo.findAudioByEmotionAndIntensity(actorId, emotion, intensity) ?:
@@ -42,7 +42,7 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo, val supabaseStorageS
 
     fun getAllPrivateVoiceActorsOfUser(pageNumber: Int, pageSize: Int): Page<VoiceActor> {
 
-        val userId = getCurrentUserId()
+        val userId = userService.getCurrrenctUser().getUserId()
 
         val pageable: Pageable = PageRequest.of(pageNumber, pageSize);
 
@@ -53,7 +53,7 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo, val supabaseStorageS
     fun saveVoiceActor(request: VoiceActorRequest, files: List<MultipartFile>): VoiceActorRequest {
 
         if (files.size != request.audios.size) throw IllegalArgumentException("Files count must match audio metadata count")
-        val userId = getCurrentUserId()
+        val userId = userService.getCurrrenctUser().getUserId()
 
         val savedActor: VoiceActor
         val actorName = request.actorName.trim().lowercase()
@@ -141,14 +141,6 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo, val supabaseStorageS
         }
 
         return results
-    }
-
-    private fun getCurrentUserId(): ObjectId {
-        val user = SecurityContextHolder
-            .getContext()
-            .authentication
-            ?.principal as CurrentUserDetails
-        return user.getUserId()
     }
 
     private fun saveAudios(request: VoiceActorRequest, files: List<MultipartFile>, userId: ObjectId): List<Audio>{

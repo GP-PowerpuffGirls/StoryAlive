@@ -22,7 +22,7 @@ data class VoiceActor(
     val isAdult: Boolean = true,
     val isPrivate: Boolean,
     var audios: @NotEmpty List<Audio>,
-    var preferredRole: PreferredRole?= PreferredRole.NONE
+    var preferredRole: PreferredRole= PreferredRole.NONE
 ){
     init {
         require(audios.isNotEmpty()) { "VoiceActor must have at least one audio" }

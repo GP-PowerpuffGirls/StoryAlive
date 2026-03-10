@@ -81,5 +81,11 @@ class UserService ( private val userRepo: UserRepo, private val hashEncoder : Ha
             totalStoriesCount = updatedUser.totalStoriesCount
         )
     }
+    fun getCurrrenctUser(): CurrentUserDetails {
+        val auth = SecurityContextHolder.getContext().authentication
+        require(auth != null && auth.principal is CurrentUserDetails)
+        return auth.principal as CurrentUserDetails
+    }
+
 
 }

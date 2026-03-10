@@ -17,6 +17,6 @@ data class VoiceActorRequest (
     @field:NotNull
     val isPrivate: Boolean,
     val audios: @NotEmpty List<Audio>,
-    var preferredRole: PreferredRole? = PreferredRole.NONE
+    var preferredRole: PreferredRole = PreferredRole.NONE
 
 )

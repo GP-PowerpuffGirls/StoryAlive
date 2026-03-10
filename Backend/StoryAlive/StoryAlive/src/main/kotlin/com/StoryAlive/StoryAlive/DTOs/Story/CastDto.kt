@@ -7,5 +7,5 @@ data class CastDto(val name: String,
                    val gender: Gender,
                    val isAdult: Boolean,
                    var voiceReference: String,
-                   var preferredRole: PreferredRole? = PreferredRole.NONE
+                   var preferredRole: PreferredRole = PreferredRole.NONE
 )

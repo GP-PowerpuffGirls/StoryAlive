@@ -14,11 +14,11 @@ data class Story(
     val description: String,
     val tags: List<Tags>,
     val genre: Genre,
-    val duration: Double,
+    var duration: Double,
     val isPrivate: Boolean,
     val hasSfx: Boolean,
     val hasBackgroundMusic: Boolean,
-    val finalAudioPath: String,
+    var finalAudioPath: String,
     var jsonPath: String, //to be added in service after llm
     var pdfPath: String,
     val createdAt: Instant, //to be added in service
