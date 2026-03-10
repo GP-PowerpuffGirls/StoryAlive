@@ -146,7 +146,7 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo, val supabaseStorageS
     private fun saveAudios(request: VoiceActorRequest, files: List<MultipartFile>, userId: ObjectId): List<Audio>{
 
         val audioUrls = files.map { file ->
-            supabaseStorageService.saveAudioToCloud(file, userId)
+            supabaseStorageService.saveAudioToCloud(file, userId, "voice-actor-files")
         }
 
         return audioUrls.mapIndexed { index, url ->

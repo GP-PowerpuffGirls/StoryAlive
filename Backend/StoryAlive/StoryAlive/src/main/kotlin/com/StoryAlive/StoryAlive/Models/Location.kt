@@ -7,7 +7,7 @@ import org.springframework.data.mongodb.core.mapping.Document
 
 @Document(collection = "locations")
 data class Location(
-    @Id val locationId: ObjectId = ObjectId(),
+    @Id val locationId: ObjectId,
     val locationName: LocationName,
-    val sfxPath: String
+    var sfxPath: String
 )

@@ -32,13 +32,16 @@ class LocationService (val locationRepo: LocationRepo, val supabaseStorageServic
     }
 
     fun saveLocation(request: LocationDto, file: MultipartFile) : LocationDto {
-        val userId = userService.getCurrrenctUser().getUserId()
-        return saveLocationToCloud(request, file, userId)
+        var location = Location(locationId = ObjectId(), locationName = request.locationName, sfxPath = "")
+        var locationDto = saveLocationToCloud(request, file, location.locationId)
+        location.sfxPath = locationDto.sfxPath
+        locationRepo.save(location)
+        return locationDto
     }
 
-    private fun saveLocationToCloud(request: LocationDto, file: MultipartFile, userId: ObjectId): LocationDto {
+    private fun saveLocationToCloud(request: LocationDto, file: MultipartFile, locationId: ObjectId): LocationDto {
 
-        val sfxUrl = supabaseStorageService.saveAudioToCloud(file, userId)
+        val sfxUrl = supabaseStorageService.saveAudioToCloud(file, locationId, "location-audio-files")
 
         return LocationDto(
                 locationName = request.locationName,
