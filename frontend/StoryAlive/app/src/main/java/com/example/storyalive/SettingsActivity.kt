@@ -38,6 +38,7 @@ class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
         setContent {
             // State lives here so it persists during the session
             var isLightTheme by remember { mutableStateOf(true) }
@@ -81,7 +82,8 @@ fun SettingsScreen(isLightTheme: Boolean = true, onThemeChange: (Boolean) -> Uni
             .fillMaxSize()
             .background(colors.background)
             .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(bottom = 100.dp)
     ) {
         // --- Header ---
         item {

@@ -69,6 +69,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
@@ -76,19 +77,26 @@ import androidx.compose.ui.draw.clip
 class HistoryActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContent {
-            StoryAliveTheme {
-                val navController = rememberNavController()
+            // State for the theme
+            var isLightTheme by remember { mutableStateOf(true) }
 
-                NavHost(navController = navController, startDestination = "history") {
-                    composable("history") {
-                        HistoryScreen(onStoryClick = { title ->
-                            navController.navigate("detail/$title")
-                        })
-                    }
-                    composable("detail/{title}") { backStackEntry ->
-                        val title = backStackEntry.arguments?.getString("title") ?: ""
-                        StoryDetailScreen(title = title, date = "2/20/2026")
+            StoryAliveTheme(darkTheme = !isLightTheme) {
+                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    Box(modifier = Modifier.padding(innerPadding)) {
+                        // Pass the navigation logic here
+                        HistoryScreen(
+                            isLightTheme = isLightTheme,
+                            onStoryClick = { title, date ->
+                                // THIS IS THE NAVIGATION LOGIC
+                                val intent = android.content.Intent(this@HistoryActivity, StoryActivity::class.java).apply {
+                                    putExtra("STORY_TITLE", title)
+                                    putExtra("STORY_DATE", date)
+                                }
+                                startActivity(intent)
+                            }
+                        )
                     }
                 }
             }
@@ -103,7 +111,7 @@ data class StoryHistoryItem(
     val hasSfx: Boolean = false
 )
 @Composable
-fun HistoryScreen(isLightTheme: Boolean=true,onStoryClick: (String) -> Unit){
+fun HistoryScreen(isLightTheme: Boolean=true,onStoryClick: (String,String) -> Unit){
     val colors= themeColors(isLightTheme)
     val historyList =listOf(
         StoryHistoryItem("The Adventure Begins", "2/20/2026", "5:32", hasBgm = true),
@@ -119,8 +127,13 @@ fun HistoryScreen(isLightTheme: Boolean=true,onStoryClick: (String) -> Unit){
             modifier = Modifier.padding(vertical = 16.dp)
         )
         LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
-            items(historyList){
-                story->StoryCard(story,colors,onNavigate = { onStoryClick(story.title) })
+            items(historyList) { story ->
+                StoryCard(
+                    story = story,
+                    colors = colors,
+                    // Pass both title and date up to the Activity
+                    onNavigate = { onStoryClick(story.title, story.date) }
+                )
             }
         }
     }
@@ -219,312 +232,7 @@ fun TagBadge(text: String, icon: ImageVector, colors: com.example.storyalive.ui.
         }
     }
 }
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun StoryDetailScreen(
-    title: String,
-    date: String,
-    isLightTheme: Boolean = true
-) {
 
-    val colors = themeColors(isLightTheme)
-    val scrollState = rememberScrollState()
-
-    var playbackPosition by remember { mutableFloatStateOf(0.15f) }
-    var volume by remember { mutableFloatStateOf(0.8f) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(colors.background)
-            .verticalScroll(scrollState)
-            .padding(16.dp)
-    ) {
-
-        Card(
-            shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = colors.card),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-
-            Column(modifier = Modifier.padding(20.dp)) {
-
-                Text(
-                    text = title,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.heading
-                )
-
-                Text(
-                    text = "Uploaded on $date",
-                    fontSize = 13.sp,
-                    color = colors.muted
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Card(
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = colors.background.copy(alpha = 0.35f)
-                    ),
-                    border = BorderStroke(1.dp, Color.LightGray.copy(.25f))
-                ) {
-
-                    Column(
-                        modifier = Modifier.padding(18.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-
-                        // PROGRESS BAR
-
-                        Slider(
-                            value = playbackPosition,
-                            onValueChange = { playbackPosition = it },
-                            colors = SliderDefaults.colors(
-                                // We make both tracks the same light color to match the image
-                                activeTrackColor = Color.LightGray.copy(alpha = 0.3f),
-                                inactiveTrackColor = Color.LightGray.copy(alpha = 0.3f),
-                                // This hides the default solid thumb so our custom one shows
-                                thumbColor = Color.Transparent
-                            ),
-                            thumb = {
-                                // Custom hollow circle thumb
-                                Surface(
-                                    modifier = Modifier.size(20.dp),
-                                    shape = CircleShape,
-                                    color = Color.White,
-                                    border = BorderStroke(2.dp, Color.Gray) // The dark ring
-                                ) {}
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("0:00", fontSize = 12.sp, color = colors.muted)
-                            Text("6:12", fontSize = 12.sp, color = colors.muted)
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        // CONTROLS
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(28.dp)
-                        ) {
-
-                            Icon(
-                                imageVector = Icons.Outlined.SkipPrevious,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(30.dp)
-                                    .clickable { },
-                                tint = colors.muted
-                            )
-
-                            // PLAY BUTTON
-
-                            Box(
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .background(colors.accent, CircleShape)
-                                    .clickable { },
-                                contentAlignment = Alignment.Center
-                            ) {
-
-                                Icon(
-                                    imageVector = Icons.Outlined.PlayArrow,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(36.dp)
-                                )
-
-                            }
-
-                            Icon(
-                                imageVector = Icons.Outlined.SkipNext,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(30.dp)
-                                    .clickable { },
-                                tint = colors.muted
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        // SPEED
-
-                        Column(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-
-                            Text(
-                                text = "Playback Speed: 1x",
-                                fontSize = 13.sp,
-                                color = colors.muted
-                            )
-
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp), // Adjusted spacing
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-
-                                listOf(
-                                    "0.5x",
-                                    "0.75x",
-                                    "1x",
-                                    "1.25x",
-                                    "1.5x",
-                                    "2x"
-                                ).forEach { speed ->
-
-                                    val selected = speed == "1x"
-
-                                    Box(
-                                        modifier = Modifier
-                                            .border(
-                                                1.dp,
-                                                if (selected) colors.accent else Color.Gray,
-                                                RoundedCornerShape(6.dp)
-                                            )
-                                            .background(
-                                                if (selected) colors.accent else Color.Transparent,
-                                                RoundedCornerShape(6.dp)
-                                            )
-                                            .clickable { }
-                                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                                    ) {
-
-                                        Text(
-                                            text = speed,
-                                            fontSize = 10.sp,
-                                            color = if (selected) Color.White else colors.heading
-                                        )
-
-                                    }
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        // VOLUME
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-
-                            Icon(
-                                imageVector = Icons.Outlined.VolumeUp,
-                                contentDescription = null,
-                                tint = colors.muted,
-                                modifier = Modifier.size(20.dp)
-                            )
-
-                            val sliderColors = SliderDefaults.colors(
-                                activeTrackColor = colors.accent,
-                                inactiveTrackColor = Color.LightGray.copy(alpha = 0.4f),
-                                thumbColor = Color.Transparent
-                            )
-
-                            Slider(
-                                value = volume,
-                                onValueChange = { volume = it },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(horizontal = 8.dp),
-                                colors = sliderColors,
-                                thumb = {
-                                    Surface(
-                                        modifier = Modifier.size(18.dp),
-                                        shape = CircleShape,
-                                        color = Color.White,
-                                        border = BorderStroke(1.5.dp, Color.DarkGray.copy(alpha = 0.7f))
-                                    ) {}
-                                },
-                                track = { sliderState ->
-                                    SliderDefaults.Track(
-                                        sliderState = sliderState,
-                                        modifier = Modifier.height(4.dp),
-                                        colors = sliderColors, // Pass the colors object here instead of individual colors
-                                        enabled = true
-                                    )
-                                }
-                            )
-                            Text(
-                                text = "100%",
-                                fontSize = 12.sp,
-                                color = colors.muted
-                            )
-                        }
-
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // STORY CARD
-
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = colors.card),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-
-            Column(modifier = Modifier.padding(20.dp)) {
-
-                Text(
-                    text = "Story Content",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.heading
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text =
-                        "Once upon a time, in a land far, far away, there lived a young adventurer named Alex. Alex had always dreamed of exploring the mysterious forests that lay beyond the village.\n\nOne bright morning, Alex packed a small bag with essentials—a map, some food, and a compass that had belonged to their grandfather.",
-                    fontSize = 16.sp,
-                    lineHeight = 24.sp,
-                    color = colors.text
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(50.dp))
-    }
-}
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun NavigationFlowPreview() {
-    StoryAliveTheme {
-        // Create a local navController for the preview
-        val navController = rememberNavController()
-
-        NavHost(navController = navController, startDestination = "history") {
-            composable("history") {
-                HistoryScreen(onStoryClick = { title ->
-                    navController.navigate("detail/$title")
-                })
-            }
-            composable("detail/{title}") { backStackEntry ->
-                val title = backStackEntry.arguments?.getString("title") ?: ""
-                StoryDetailScreen(title = title, date = "2/20/2026")
-            }
-        }
-    }
-}
 @Preview(showBackground = true, name = "Light Mode", showSystemUi = true)
 @Composable
 fun HistoryPreviewLight() {
@@ -532,7 +240,7 @@ fun HistoryPreviewLight() {
         // We pass an empty lambda {} because we don't need actual navigation in the preview
         HistoryScreen(
             isLightTheme = true,
-            onStoryClick = { title -> /* Do nothing in preview */ }
+            onStoryClick = { title,date -> /* Do nothing in preview */ }
         )
     }
 }
@@ -543,7 +251,7 @@ fun HistoryPreviewDark() {
     StoryAliveTheme {
         HistoryScreen(
             isLightTheme = false,
-            onStoryClick = { title -> /* Do nothing in preview */ }
+            onStoryClick = { title,date -> /* Do nothing in preview */ }
         )
     }
 }
