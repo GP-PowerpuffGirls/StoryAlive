@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.storyalive.components.StoryAliveTopBar
 import com.example.storyalive.ui.theme.themeColors
 
 class SettingsActivity : ComponentActivity() {
@@ -47,14 +48,18 @@ class SettingsActivity : ComponentActivity() {
                 // Scaffold correctly handles the system bars (status/nav)
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     // fillMaxSize() here ensures the Box stays within screen bounds
-                    Box(modifier = Modifier
-                        .padding(innerPadding)
-                        .fillMaxSize()
+                    Box(
+                        modifier = Modifier
+                            .padding(innerPadding)
+                            .fillMaxSize()
                     ) {
-                        SettingsScreen(
-                            isLightTheme = isLightTheme,
-                            onThemeChange = { isLightTheme = it }
-                        )
+                        Column {
+                            StoryAliveTopBar(selectedPage = "Settings")
+                            SettingsScreen(
+                                isLightTheme = isLightTheme,
+                                onThemeChange = { isLightTheme = it }
+                            )
+                        }
                     }
                 }
             }
@@ -104,7 +109,12 @@ fun SettingsScreen(isLightTheme: Boolean = true, onThemeChange: (Boolean) -> Uni
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        Text("Edit Profile", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.heading)
+                        Text(
+                            "Edit Profile",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.heading
+                        )
                         Spacer(modifier = Modifier.height(12.dp))
                         ProfileInfoRow("Name:", "Alex Johnson", colors)
                         ProfileInfoRow("Email:", "alex.johnson@example.com", colors)
@@ -126,13 +136,23 @@ fun SettingsScreen(isLightTheme: Boolean = true, onThemeChange: (Boolean) -> Uni
         // --- 2. Appearance ---
         item {
             SettingsCard(colors) {
-                Text("Appearance", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.heading)
+                Text(
+                    "Appearance",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.heading
+                )
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.WbSunny, contentDescription = null, tint = colors.muted)
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Theme", fontWeight = FontWeight.Bold, color = colors.heading, fontSize = 14.sp)
+                        Text(
+                            "Theme",
+                            fontWeight = FontWeight.Bold,
+                            color = colors.heading,
+                            fontSize = 14.sp
+                        )
                         Text("Choose your preferred theme", color = colors.muted, fontSize = 12.sp)
                     }
                     Switch(
@@ -142,14 +162,21 @@ fun SettingsScreen(isLightTheme: Boolean = true, onThemeChange: (Boolean) -> Uni
                     )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     ThemeModeSelector(
                         "Light Mode", isLightTheme, Icons.Outlined.LightMode, colors,
-                        Modifier.weight(1f).clickable { onThemeChange(true) }
+                        Modifier
+                            .weight(1f)
+                            .clickable { onThemeChange(true) }
                     )
                     ThemeModeSelector(
                         "Dark Mode", !isLightTheme, Icons.Outlined.DarkMode, colors,
-                        Modifier.weight(1f).clickable { onThemeChange(false) }
+                        Modifier
+                            .weight(1f)
+                            .clickable { onThemeChange(false) }
                     )
                 }
             }
@@ -158,42 +185,81 @@ fun SettingsScreen(isLightTheme: Boolean = true, onThemeChange: (Boolean) -> Uni
         // --- 3. Notifications ---
         item {
             SettingsCard(colors) {
-                Text("Notifications", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.heading)
+                Text(
+                    "Notifications",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.heading
+                )
                 Spacer(modifier = Modifier.height(16.dp))
-                NotificationRow(Icons.Outlined.Notifications, "Push Notifications",
-                    "Receive notifications about your stories", pushNotifications, { pushNotifications = it }, colors)
-                NotificationRow(Icons.Outlined.Public, "Community Updates",
-                    "Get notified about new published stories", communityUpdates, { communityUpdates = it }, colors)
+                NotificationRow(
+                    Icons.Outlined.Notifications,
+                    "Push Notifications",
+                    "Receive notifications about your stories",
+                    pushNotifications,
+                    { pushNotifications = it },
+                    colors
+                )
+                NotificationRow(
+                    Icons.Outlined.Public,
+                    "Community Updates",
+                    "Get notified about new published stories",
+                    communityUpdates,
+                    { communityUpdates = it },
+                    colors
+                )
             }
         }
 
         // --- 4. Audio Settings ---
         item {
             SettingsCard(colors) {
-                Text("Audio Settings", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.heading)
+                Text(
+                    "Audio Settings",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.heading
+                )
                 Spacer(modifier = Modifier.height(16.dp))
-                NotificationRow(Icons.Outlined.VolumeUp, "Auto-play Next Story",
-                    "Automatically play the next story in queue", autoplay, { autoplay = it }, colors)
+                NotificationRow(
+                    Icons.Outlined.VolumeUp,
+                    "Auto-play Next Story",
+                    "Automatically play the next story in queue",
+                    autoplay,
+                    { autoplay = it },
+                    colors
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Default Playback Speed", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.heading)
+                Text(
+                    "Default Playback Speed",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.heading
+                )
                 Spacer(modifier = Modifier.height(8.dp))
 
                 @OptIn(ExperimentalMaterial3Api::class)
-                ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }) {
                     OutlinedTextField(
                         value = selectedSpeed,
                         onValueChange = {},
                         readOnly = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color.Black,
                             unfocusedBorderColor = Color.LightGray
                         )
                     )
-                    ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }) {
                         speedOptions.forEach { option ->
                             DropdownMenuItem(
                                 text = { Text(option) },
@@ -208,27 +274,57 @@ fun SettingsScreen(isLightTheme: Boolean = true, onThemeChange: (Boolean) -> Uni
         // --- 5. Privacy & Security ---
         item {
             SettingsCard(colors) {
-                Text("Privacy & Security", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.heading)
+                Text(
+                    "Privacy & Security",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.heading
+                )
                 Spacer(modifier = Modifier.height(16.dp))
-                NotificationRow(Icons.Outlined.Shield, "Make Profile Public",
-                    "Allow others to view your profile and stories", isPublic, { isPublic = it }, colors)
-                NotificationRow(Icons.Outlined.Language, "Show in Discovery",
-                    "Let others discover your published stories", inDiscovery, { inDiscovery = it }, colors)
+                NotificationRow(
+                    Icons.Outlined.Shield,
+                    "Make Profile Public",
+                    "Allow others to view your profile and stories",
+                    isPublic,
+                    { isPublic = it },
+                    colors
+                )
+                NotificationRow(
+                    Icons.Outlined.Language,
+                    "Show in Discovery",
+                    "Let others discover your published stories",
+                    inDiscovery,
+                    { inDiscovery = it },
+                    colors
+                )
             }
         }
 
         // --- 6. About ---
         item {
             SettingsCard(colors) {
-                Text("About", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.heading)
+                Text(
+                    "About",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.heading
+                )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Version: 1.0.0", fontSize = 14.sp, color = colors.heading)
                 Text("Build: 2026.02.23", fontSize = 14.sp, color = colors.heading)
                 Spacer(modifier = Modifier.height(12.dp))
                 Row {
-                    Text("Terms of Service", color = colors.accent, fontSize = 14.sp, modifier = Modifier.clickable { })
+                    Text(
+                        "Terms of Service",
+                        color = colors.accent,
+                        fontSize = 14.sp,
+                        modifier = Modifier.clickable { })
                     Text(" • ", color = colors.muted)
-                    Text("Privacy Policy", color = colors.accent, fontSize = 14.sp, modifier = Modifier.clickable { })
+                    Text(
+                        "Privacy Policy",
+                        color = colors.accent,
+                        fontSize = 14.sp,
+                        modifier = Modifier.clickable { })
                 }
             }
         }
@@ -269,19 +365,36 @@ fun NotificationRow(
     onCheckedChange: (Boolean) -> Unit,
     colors: com.example.storyalive.ui.theme.ThemeColors
 ) {
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = colors.heading, modifier = Modifier.size(24.dp))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = colors.heading,
+            modifier = Modifier.size(24.dp)
+        )
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.Bold, color = colors.heading, fontSize = 14.sp)
             Text(subtitle, color = colors.muted, fontSize = 12.sp)
         }
-        Checkbox(checked = checked, onCheckedChange = onCheckedChange, colors = CheckboxDefaults.colors(checkedColor = colors.accent))
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = CheckboxDefaults.colors(checkedColor = colors.accent)
+        )
     }
 }
 
 @Composable
-fun SettingsCard(colors: com.example.storyalive.ui.theme.ThemeColors, content: @Composable ColumnScope.() -> Unit) {
+fun SettingsCard(
+    colors: com.example.storyalive.ui.theme.ThemeColors,
+    content: @Composable ColumnScope.() -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -293,7 +406,11 @@ fun SettingsCard(colors: com.example.storyalive.ui.theme.ThemeColors, content: @
 }
 
 @Composable
-fun ProfileInfoRow(label: String, value: String, colors: com.example.storyalive.ui.theme.ThemeColors) {
+fun ProfileInfoRow(
+    label: String,
+    value: String,
+    colors: com.example.storyalive.ui.theme.ThemeColors
+) {
     Row(modifier = Modifier.padding(vertical = 2.dp)) {
         Text(text = label, fontWeight = FontWeight.Bold, color = colors.heading, fontSize = 14.sp)
         Spacer(modifier = Modifier.width(4.dp))
@@ -302,22 +419,43 @@ fun ProfileInfoRow(label: String, value: String, colors: com.example.storyalive.
 }
 
 @Composable
-fun ThemeModeSelector(label: String, isSelected: Boolean, icon: ImageVector, colors: com.example.storyalive.ui.theme.ThemeColors, modifier: Modifier) {
+fun ThemeModeSelector(
+    label: String,
+    isSelected: Boolean,
+    icon: ImageVector,
+    colors: com.example.storyalive.ui.theme.ThemeColors,
+    modifier: Modifier
+) {
     val borderColor = if (isSelected) colors.accent else Color.LightGray.copy(alpha = 0.3f)
     Column(
         modifier = modifier
             .border(1.dp, borderColor, RoundedCornerShape(8.dp))
-            .background(if (isSelected) colors.accent.copy(alpha = 0.05f) else Color.Transparent, RoundedCornerShape(8.dp))
+            .background(
+                if (isSelected) colors.accent.copy(alpha = 0.05f) else Color.Transparent,
+                RoundedCornerShape(8.dp)
+            )
             .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
-            modifier = Modifier.fillMaxWidth().height(60.dp).clip(RoundedCornerShape(4.dp))
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp)
+                .clip(RoundedCornerShape(4.dp))
                 .background(if (isSelected) Color.Transparent else Color.LightGray.copy(alpha = 0.2f))
-                .border(1.dp, if (isSelected) colors.accent else Color.Transparent, RoundedCornerShape(4.dp)),
+                .border(
+                    1.dp,
+                    if (isSelected) colors.accent else Color.Transparent,
+                    RoundedCornerShape(4.dp)
+                ),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription = null, tint = if (isSelected) colors.accent else colors.muted, modifier = Modifier.size(32.dp))
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = if (isSelected) colors.accent else colors.muted,
+                modifier = Modifier.size(32.dp)
+            )
         }
         Spacer(modifier = Modifier.height(8.dp))
         Text(label, fontSize = 12.sp, color = if (isSelected) colors.accent else colors.muted)
@@ -328,11 +466,14 @@ fun ThemeModeSelector(label: String, isSelected: Boolean, icon: ImageVector, col
 @Composable
 fun SettingsPreviewLight() {
     StoryAliveTheme(darkTheme = false) {
-        // We pass a dummy lambda {} because we don't need real state logic in a preview
-        SettingsScreen(
-            isLightTheme = true,
-            onThemeChange = { }
-        )
+        Column {
+            StoryAliveTopBar(selectedPage = "Settings")
+            // We pass a dummy lambda {} because we don't need real state logic in a preview
+            SettingsScreen(
+                isLightTheme = true,
+                onThemeChange = { }
+            )
+        }
     }
 }
 
@@ -340,9 +481,12 @@ fun SettingsPreviewLight() {
 @Composable
 fun SettingsPreviewDark() {
     StoryAliveTheme(darkTheme = true) {
-        SettingsScreen(
-            isLightTheme = false,
-            onThemeChange = { }
-        )
+        Column {
+            StoryAliveTopBar(selectedPage = "Settings")
+            SettingsScreen(
+                isLightTheme = false,
+                onThemeChange = { }
+            )
+        }
     }
 }

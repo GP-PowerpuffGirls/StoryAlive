@@ -73,6 +73,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
+import com.example.storyalive.components.StoryAliveTopBar
 
 class HistoryActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -85,18 +86,24 @@ class HistoryActivity : ComponentActivity() {
             StoryAliveTheme(darkTheme = !isLightTheme) {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Box(modifier = Modifier.padding(innerPadding)) {
-                        // Pass the navigation logic here
-                        HistoryScreen(
-                            isLightTheme = isLightTheme,
-                            onStoryClick = { title, date ->
-                                // THIS IS THE NAVIGATION LOGIC
-                                val intent = android.content.Intent(this@HistoryActivity, StoryActivity::class.java).apply {
-                                    putExtra("STORY_TITLE", title)
-                                    putExtra("STORY_DATE", date)
+                        Column {
+                            StoryAliveTopBar(selectedPage = "History")
+                            // Pass the navigation logic here
+                            HistoryScreen(
+                                isLightTheme = isLightTheme,
+                                onStoryClick = { title, date ->
+                                    // THIS IS THE NAVIGATION LOGIC
+                                    val intent = android.content.Intent(
+                                        this@HistoryActivity,
+                                        StoryActivity::class.java
+                                    ).apply {
+                                        putExtra("STORY_TITLE", title)
+                                        putExtra("STORY_DATE", date)
+                                    }
+                                    startActivity(intent)
                                 }
-                                startActivity(intent)
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
@@ -237,11 +244,14 @@ fun TagBadge(text: String, icon: ImageVector, colors: com.example.storyalive.ui.
 @Composable
 fun HistoryPreviewLight() {
     StoryAliveTheme {
-        // We pass an empty lambda {} because we don't need actual navigation in the preview
-        HistoryScreen(
-            isLightTheme = true,
-            onStoryClick = { title,date -> /* Do nothing in preview */ }
-        )
+        Column {
+            StoryAliveTopBar(selectedPage = "History")
+            // We pass an empty lambda {} because we don't need actual navigation in the preview
+            HistoryScreen(
+                isLightTheme = true,
+                onStoryClick = { title, date -> /* Do nothing in preview */ }
+            )
+        }
     }
 }
 
@@ -249,9 +259,12 @@ fun HistoryPreviewLight() {
 @Composable
 fun HistoryPreviewDark() {
     StoryAliveTheme {
-        HistoryScreen(
-            isLightTheme = false,
-            onStoryClick = { title,date -> /* Do nothing in preview */ }
-        )
+        Column {
+            StoryAliveTopBar(selectedPage = "History")
+            HistoryScreen(
+                isLightTheme = false,
+                onStoryClick = { title, date -> /* Do nothing in preview */ }
+            )
+        }
     }
 }

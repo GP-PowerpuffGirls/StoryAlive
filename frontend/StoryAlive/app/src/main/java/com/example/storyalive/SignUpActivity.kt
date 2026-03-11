@@ -308,7 +308,7 @@ fun SignUpScreen(
                                     println("Refresh Token: ${tokens?.refreshToken}")
                                     CoroutineScope(Dispatchers.Main).launch {
                                         Toast.makeText(context, "Signup successful!", Toast.LENGTH_SHORT).show()
-                                        context.startActivity(Intent(context, PublishedActivity::class.java))
+                                        context.startActivity(Intent(context, UploadActivity::class.java))
                                     }
 
                                 } else {
@@ -356,7 +356,7 @@ fun SignUpScreen(
                 OutlinedButton(
                     onClick = {
                         context.startActivity(
-                            Intent(context, LoginActivity::class.java)
+                            Intent(context, SignUpActivity::class.java)
                         )
                     },
                     border = BorderStroke(2.dp, colors.accent),

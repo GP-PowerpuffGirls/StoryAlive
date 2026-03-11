@@ -49,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.storyalive.components.StoryAliveTopBar
 import com.example.storyalive.ui.theme.StoryAliveTheme
 import com.example.storyalive.ui.theme.themeColors
 
@@ -67,11 +68,14 @@ class StoryActivity : ComponentActivity() {
             StoryAliveTheme(darkTheme = !isLightTheme) {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Box(modifier = Modifier.padding(innerPadding)) {
-                        StoryDetailScreen(
-                            title = storyTitle,
-                            date = storyDate,
-                            isLightTheme = isLightTheme
-                        )
+                        Column {
+                            StoryAliveTopBar(selectedPage = "Published")
+                            StoryDetailScreen(
+                                title = storyTitle,
+                                date = storyDate,
+                                isLightTheme = isLightTheme
+                            )
+                        }
                     }
                 }
             }
@@ -370,12 +374,15 @@ fun StoryDetailScreen(
 @Composable
 fun StoryDetailPreviewLight() {
     StoryAliveTheme(darkTheme = false) {
-        // Mocking the screen with sample data
-        StoryDetailScreen(
-            title = "The Adventure Begins",
-            date = "2/20/2026",
-            isLightTheme = true
-        )
+        Column {
+            StoryAliveTopBar(selectedPage = "Published")
+            // Mocking the screen with sample data
+            StoryDetailScreen(
+                title = "The Adventure Begins",
+                date = "2/20/2026",
+                isLightTheme = true
+            )
+        }
     }
 }
 
@@ -383,11 +390,14 @@ fun StoryDetailPreviewLight() {
 @Composable
 fun StoryDetailPreviewDark() {
     StoryAliveTheme(darkTheme = true) {
-        // Mocking the screen in Dark Mode
-        StoryDetailScreen(
-            title = "The Adventure Begins",
-            date = "2/20/2026",
-            isLightTheme = false
-        )
+        Column {
+            StoryAliveTopBar(selectedPage = "Published")
+            // Mocking the screen in Dark Mode
+            StoryDetailScreen(
+                title = "The Adventure Begins",
+                date = "2/20/2026",
+                isLightTheme = false
+            )
+        }
     }
 }

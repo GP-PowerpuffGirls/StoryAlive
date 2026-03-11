@@ -45,6 +45,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.storyalive.components.StoryAliveTopBar
 import com.example.storyalive.ui.theme.StoryAliveTheme
 import com.example.storyalive.ui.theme.themeColors
 
@@ -57,23 +58,30 @@ class FavoriteStoriesActivity : ComponentActivity() {
             StoryAliveTheme(darkTheme = !isLightTheme) {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Box(modifier = Modifier.padding(innerPadding)) {
-                        FavoriteStoriesScreen(
-                            isLightTheme = isLightTheme,
-                            onStoryClick = { title, date ->
-                                // Use Intent to move to StoryActivity
-                                val intent = android.content.Intent(this@FavoriteStoriesActivity, StoryActivity::class.java).apply {
-                                    putExtra("STORY_TITLE", title)
-                                    putExtra("STORY_DATE", date)
+                        Column {
+                            StoryAliveTopBar(selectedPage = "Favorites")
+                            FavoriteStoriesScreen(
+                                isLightTheme = isLightTheme,
+                                onStoryClick = { title, date ->
+                                    // Use Intent to move to StoryActivity
+                                    val intent = android.content.Intent(
+                                        this@FavoriteStoriesActivity,
+                                        StoryActivity::class.java
+                                    ).apply {
+                                        putExtra("STORY_TITLE", title)
+                                        putExtra("STORY_DATE", date)
+                                    }
+                                    startActivity(intent)
                                 }
-                                startActivity(intent)
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
         }
     }
 }
+
 data class FavoriteStory(
     val title: String,
     val author: String,
@@ -119,8 +127,17 @@ fun FavoriteStoriesScreen(isLightTheme: Boolean = true, onStoryClick: (String, S
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Favorite Stories", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = colors.heading)
-                Text("Your collection of favorite stories from the community", fontSize = 14.sp, color = colors.muted)
+                Text(
+                    "Favorite Stories",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.heading
+                )
+                Text(
+                    "Your collection of favorite stories from the community",
+                    fontSize = 14.sp,
+                    color = colors.muted
+                )
             }
 
             Surface(
@@ -129,8 +146,16 @@ fun FavoriteStoriesScreen(isLightTheme: Boolean = true, onStoryClick: (String, S
                 border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(0.5f)),
                 shadowElevation = 2.dp
             ) {
-                Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Favorite, contentDescription = null, tint = Color.Red, modifier = Modifier.size(16.dp))
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Filled.Favorite,
+                        contentDescription = null,
+                        tint = Color.Red,
+                        modifier = Modifier.size(16.dp)
+                    )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("${favoriteList.size} Favorites", fontSize = 14.sp, color = colors.muted)
                 }
@@ -146,9 +171,9 @@ fun FavoriteStoriesScreen(isLightTheme: Boolean = true, onStoryClick: (String, S
         ) {
             items(favoriteList) { story ->
                 FavoriteStoryCard(
-                    story=story,
-                    colors=colors,
-                    onClick={onStoryClick(story.title,"Unkown Date")}
+                    story = story,
+                    colors = colors,
+                    onClick = { onStoryClick(story.title, "Unkown Date") }
                 )
             }
         }
@@ -156,15 +181,25 @@ fun FavoriteStoriesScreen(isLightTheme: Boolean = true, onStoryClick: (String, S
 }
 
 @Composable
-fun FavoriteStoryCard(story: FavoriteStory, colors: com.example.storyalive.ui.theme.ThemeColors,onClick: () -> Unit) {
+fun FavoriteStoryCard(
+    story: FavoriteStory,
+    colors: com.example.storyalive.ui.theme.ThemeColors,
+    onClick: () -> Unit
+) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable{onClick()},
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = colors.card),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
-            Box(modifier = Modifier.fillMaxWidth().height(180.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+            ) {
                 AsyncImage(
                     model = story.imageUrl,
                     contentDescription = null,
@@ -176,12 +211,20 @@ fun FavoriteStoryCard(story: FavoriteStory, colors: com.example.storyalive.ui.th
                     Icons.Filled.Favorite,
                     contentDescription = null,
                     tint = Color.Red,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(12.dp).size(28.dp)
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(12.dp)
+                        .size(28.dp)
                 )
             }
 
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(story.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = colors.heading)
+                Text(
+                    story.title,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.heading
+                )
                 Text("by ${story.author}", fontSize = 14.sp, color = colors.muted)
 
                 Text(
@@ -205,11 +248,24 @@ fun FavoriteStoryCard(story: FavoriteStory, colors: com.example.storyalive.ui.th
                 }
 
                 // Stats Row
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.AccessTime, null, tint = colors.muted, modifier = Modifier.size(16.dp))
+                        Icon(
+                            Icons.Outlined.AccessTime,
+                            null,
+                            tint = colors.muted,
+                            modifier = Modifier.size(16.dp)
+                        )
                         Text(" ${story.duration}  ", fontSize = 12.sp, color = colors.muted)
-                        Icon(Icons.Outlined.Visibility, null, tint = colors.muted, modifier = Modifier.size(16.dp))
+                        Icon(
+                            Icons.Outlined.Visibility,
+                            null,
+                            tint = colors.muted,
+                            modifier = Modifier.size(16.dp)
+                        )
                         Text(" ${story.views}", fontSize = 12.sp, color = colors.muted)
                     }
                     Text(story.ageRating, fontSize = 12.sp, color = colors.muted)
@@ -223,8 +279,11 @@ fun FavoriteStoryCard(story: FavoriteStory, colors: com.example.storyalive.ui.th
 @Composable
 fun FavoriteStoriesPreviewLight() {
     StoryAliveTheme(darkTheme = false) {
-        // Passing true for isLightTheme to use your light color palette
-        FavoriteStoriesScreen(isLightTheme = true, onStoryClick = {title,date ->})
+        Column {
+            StoryAliveTopBar(selectedPage = "Favorites")
+            // Passing true for isLightTheme to use your light color palette
+            FavoriteStoriesScreen(isLightTheme = true, onStoryClick = { title, date -> })
+        }
     }
 }
 
@@ -232,7 +291,10 @@ fun FavoriteStoriesPreviewLight() {
 @Composable
 fun FavoriteStoriesPreviewDark() {
     StoryAliveTheme(darkTheme = true) {
-        // Passing false for isLightTheme to use your dark color palette
-        FavoriteStoriesScreen(isLightTheme = false, onStoryClick = {title,date ->})
+        Column {
+            StoryAliveTopBar(selectedPage = "Favorites")
+            // Passing false for isLightTheme to use your dark color palette
+            FavoriteStoriesScreen(isLightTheme = false, onStoryClick = { title, date -> })
+        }
     }
 }

@@ -46,6 +46,8 @@ import com.example.storyalive.ui.theme.StoryAliveTheme
 import com.example.storyalive.ui.theme.themeColors
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
+import com.example.storyalive.components.StoryAliveTopBar
+
 class privateStoriesActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,17 +58,23 @@ class privateStoriesActivity : ComponentActivity() {
             StoryAliveTheme(darkTheme = !isLightTheme) {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Box(modifier = Modifier.padding(innerPadding)) {
-                        PrivateStoriesScreen(
-                            isLightTheme = isLightTheme,
-                            onStoryClick = { title, date ->
-                                // 5. Start StoryActivity via Intent
-                                val intent = android.content.Intent(this@privateStoriesActivity, StoryActivity::class.java).apply {
-                                    putExtra("STORY_TITLE", title)
-                                    putExtra("STORY_DATE", date)
+                        Column {
+                            StoryAliveTopBar(selectedPage = "Private")
+                            PrivateStoriesScreen(
+                                isLightTheme = isLightTheme,
+                                onStoryClick = { title, date ->
+                                    // 5. Start StoryActivity via Intent
+                                    val intent = android.content.Intent(
+                                        this@privateStoriesActivity,
+                                        StoryActivity::class.java
+                                    ).apply {
+                                        putExtra("STORY_TITLE", title)
+                                        putExtra("STORY_DATE", date)
+                                    }
+                                    startActivity(intent)
                                 }
-                                startActivity(intent)
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
@@ -250,8 +258,11 @@ fun TagChip(text: String, bgColor: Color, textColor: Color) {
 @Composable
 fun PrivateStoriesPreviewLight() {
     StoryAliveTheme(darkTheme = false) {
-        // Mocking the screen in Light Mode
-        PrivateStoriesScreen(isLightTheme = true,onStoryClick = { _, _ -> })
+        Column {
+            StoryAliveTopBar(selectedPage = "Private")
+            // Mocking the screen in Light Mode
+            PrivateStoriesScreen(isLightTheme = true, onStoryClick = { _, _ -> })
+        }
     }
 }
 
@@ -259,7 +270,10 @@ fun PrivateStoriesPreviewLight() {
 @Composable
 fun PrivateStoriesPreviewDark() {
     StoryAliveTheme(darkTheme = true) {
-        // Mocking the screen in Dark Mode
-        PrivateStoriesScreen(isLightTheme = false,onStoryClick = { _, _ -> })
+        Column {
+            StoryAliveTopBar(selectedPage = "Private")
+            // Mocking the screen in Dark Mode
+            PrivateStoriesScreen(isLightTheme = false, onStoryClick = { _, _ -> })
+        }
     }
 }

@@ -185,7 +185,7 @@ fun LoginScreen(
                                         .putString("refresh_token", tokens?.refreshToken)
                                         .apply()
 
-                                    context.startActivity(Intent(context, PublishedActivity::class.java))
+                                    context.startActivity(Intent(context, UploadActivity::class.java))
 
                                 } else {
                                     println("Login failed")
