@@ -31,10 +31,10 @@ class TTSService(@Value("\${TTS_MODEL_URL}") private val modelUrl: String) {
         val startTime = System.currentTimeMillis()
 
         // initial wait
-        Thread.sleep(60_000L)
+        //Thread.sleep(60_000L)
 
         while (true) {
-
+            println("entered polling loop")
             val ttsResponse = getAudioFromTTS(taskId)
             if (ttsResponse != null) {
                 return ttsResponse
@@ -49,10 +49,32 @@ class TTSService(@Value("\${TTS_MODEL_URL}") private val modelUrl: String) {
         }
     }
 
-    private fun getAudioFromTTS(taskId: String): TTSResponse? {
+//    private fun getAudioFromTTS(taskId: String): TTSResponse? {
+//
+//        val request = Request.Builder()
+//            .url("${modelUrl.trimEnd('/')}/results/$taskId")
+//            .get()
+//            .build()
+//
+//        client.newCall(request).execute().use { response ->
+//
+//            if (!response.isSuccessful) {
+//                throw RuntimeException("TTS result request failed: ${response.body?.string()}")
+//            }
+//
+//            val jsonString = response.body!!.string()
+//            val node = mapper.readTree(jsonString)
+//
+//            if (node.has("status") && node.get("status").asText() == "processing") {
+//                return null
+//            }
+//
+//            return mapper.readValue(jsonString, TTSResponse::class.java)
+//        }
 
+    private fun getAudioFromTTS(taskId: String): TTSResponse? {
         val request = Request.Builder()
-            .url("$modelUrl/results/$taskId")
+            .url("${modelUrl.trimEnd('/')}/results/$taskId")
             .get()
             .build()
 
@@ -65,13 +87,32 @@ class TTSService(@Value("\${TTS_MODEL_URL}") private val modelUrl: String) {
             val jsonString = response.body!!.string()
             val node = mapper.readTree(jsonString)
 
+            println("node is "+ node.toString())
+
+            // Still processing
             if (node.has("status") && node.get("status").asText() == "processing") {
                 return null
             }
 
-            return mapper.readValue(jsonString, TTSResponse::class.java)
+            // Task failed
+            if (node.has("status") && node.get("status").asText() == "failed") {
+                throw RuntimeException("TTS task failed")
+            }
+
+            // Task completed: manually map fields
+
+            val fileName = node.get("fileName")?.asText()
+                ?: throw RuntimeException("Missing fileName")
+            val duration = node.get("duration")?.asDouble()
+                ?: throw RuntimeException("Missing duration")
+            val audioBase64 = node.get("audioBase64")?.asText()
+                ?: throw RuntimeException("Missing audioBase64")
+
+            return TTSResponse(fileName, duration, audioBase64)
+
         }
     }
+
 
     private fun createTTSRequest(storyDto: StoryCreationDTO): String {
 
