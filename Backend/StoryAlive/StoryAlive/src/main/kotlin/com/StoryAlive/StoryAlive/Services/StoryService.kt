@@ -29,6 +29,7 @@ import java.util.Base64
 import java.util.Optional
 import kotlin.collections.component1
 import kotlin.collections.component2
+import kotlin.collections.forEach
 
 
 @Service
@@ -87,6 +88,7 @@ class StoryService(private val storyRepo: StoryRepo,
 
         val jsonString = supabaseStorageService.downloadFileFromSupabase(currentStory.jsonPath ?: "")
         val storyDto: StoryCreationDTO = mapper.readValue(jsonString, StoryCreationDTO::class.java)
+        storyDto.storyId = currentStory.storyId.toString()
         assignActorsToCast(currentStory, storyDto)
         if (currentStory.hasBackgroundMusic) {
             assignBGMusicToScene(currentStory, storyDto)
@@ -94,10 +96,11 @@ class StoryService(private val storyRepo: StoryRepo,
         if (currentStory.hasSfx) {
             assignSfxToScene(storyDto)
         }
+        val updatedJson = mapper.writeValueAsString(storyDto)
+        println(" STORY DTO HERE $storyDto")
         val ttsResponse = ttsService.generateAudioFromStory(storyDto)
         val audioBytes = Base64.getDecoder().decode(ttsResponse.audioBase64)
         val audioPath = supabaseStorageService.saveAudioToCloud(audioBytes, ttsResponse.fileName, currentStory.storyId)
-        val updatedJson = mapper.writeValueAsString(storyDto)
         val jsonPath = supabaseStorageService.saveJsonToCloud(updatedJson, userService.getCurrrenctUser().getUserId())
         currentStory.duration = ttsResponse.duration
         currentStory.finalAudioPath = audioPath
@@ -211,6 +214,9 @@ class StoryService(private val storyRepo: StoryRepo,
             if (castMember.name.equals("راوي")) {
                 castMember.preferredRole = PreferredRole.NARRATOR;
             }
+            else{
+                castMember.preferredRole = PreferredRole.NONE;
+            }
             val key = VoiceActorKey(castMember.isAdult, castMember.gender, castMember.preferredRole)
             val availableActors = actorsMap[key]
                 ?: throw RuntimeException("No available actor for cast member ${castMember.name} with $key")
@@ -227,10 +233,12 @@ class StoryService(private val storyRepo: StoryRepo,
                 val actorId = currentStory.voiceActors.entries.firstOrNull { it.value.second == sentence.speaker }?.key
                     ?: throw RuntimeException("No actor assigned for speaker ${sentence.speaker}")
                 val audio = actorAudioIndex[actorId]?.get(sentence.emotion to sentence.intensity)
-                    ?: throw RuntimeException("No audio found for ${sentence.speaker} with ${sentence.emotion}/${sentence.intensity}")
+                    ?: actorAudioIndex[actorId]?.get(Emotion.NARRATION to Intensity.LOW)
+                    ?: throw RuntimeException("No audio found for actor $actorId with emotion ${sentence.emotion} and intensity ${sentence.intensity}")
                 val castKey = CastKey(actorId, sentence.speaker, sentence.emotion, sentence.intensity)
                 castMap[castKey] = audio
-                sentence.speaker = audio.filepath
+                sentence.speaker = castKey.castName
+                sentence.prosodyReference = audio.filepath
             }
         }
     }
