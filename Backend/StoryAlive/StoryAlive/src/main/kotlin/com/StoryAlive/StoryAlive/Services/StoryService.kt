@@ -1,7 +1,6 @@
 package com.StoryAlive.StoryAlive.Services
 
 import Story
-import com.StoryAlive.StoryAlive.DTOs.CurrentUserDetails
 import com.StoryAlive.StoryAlive.DTOs.Story.StoryCreationDTO
 import com.StoryAlive.StoryAlive.DTOs.Story.StoryRequestDTO
 import com.StoryAlive.StoryAlive.DTOs.Key.CastKey
@@ -22,10 +21,8 @@ import org.bson.types.ObjectId
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
-import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
-import java.util.Base64
 import java.util.Optional
 import kotlin.collections.component1
 import kotlin.collections.component2
@@ -68,15 +65,13 @@ class StoryService(private val storyRepo: StoryRepo,
             assignSfxToScene(storyDto)
         }
         val ttsResponse = ttsService.generateAudioFromStory(storyDto)
-        val audioBytes = Base64.getDecoder().decode(ttsResponse.audioBase64)
 
         val updatedJson = mapper.writeValueAsString(storyDto)
-        val audioPath = supabaseStorageService.saveAudioToCloud(audioBytes, ttsResponse.fileName, currentStory.storyId)
         val jsonPath = supabaseStorageService.saveJsonToCloud(updatedJson, userId)
         val pdfPath = supabaseStorageService.savePdfToCloud(pdf, userId)
 
         currentStory.duration = ttsResponse.duration
-        currentStory.finalAudioPath = audioPath
+        currentStory.finalAudioPath = ttsResponse.audioPath
         currentStory.pdfPath = pdfPath
         currentStory.jsonPath = jsonPath
         return storyRepo.save(currentStory)
@@ -99,11 +94,9 @@ class StoryService(private val storyRepo: StoryRepo,
         val updatedJson = mapper.writeValueAsString(storyDto)
         println(" STORY DTO HERE $storyDto")
         val ttsResponse = ttsService.generateAudioFromStory(storyDto)
-        val audioBytes = Base64.getDecoder().decode(ttsResponse.audioBase64)
-        val audioPath = supabaseStorageService.saveAudioToCloud(audioBytes, ttsResponse.fileName, currentStory.storyId)
         val jsonPath = supabaseStorageService.saveJsonToCloud(updatedJson, userService.getCurrrenctUser().getUserId())
         currentStory.duration = ttsResponse.duration
-        currentStory.finalAudioPath = audioPath
+        currentStory.finalAudioPath = ttsResponse.audioPath
         currentStory.jsonPath = jsonPath
         return storyRepo.save(currentStory)
     }
@@ -118,7 +111,7 @@ class StoryService(private val storyRepo: StoryRepo,
             } else {
                 storyRequest.voiceActors.mapValues { (actorId) ->
                     val actor: Optional<VoiceActor> = voiceActorService.getAudioByActorId(actorId)
-                    if (actor != null && actor.get().audios.isNotEmpty()) {
+                    if (actor.get().audios.isNotEmpty()) {
                         Pair(actor.get().actorName, "")
                     } else {
                         Pair("", "")
@@ -176,7 +169,7 @@ class StoryService(private val storyRepo: StoryRepo,
         )
         for (chapter in storyDto.chapters) {
             for (scene in chapter.scenes) {
-                if(scene.location.locationName == LocationName.NONE) continue;
+                if(scene.location.locationName == LocationName.NONE) continue
                 val bgMusicPath = sfxMap[scene.location.locationName]
                 if (bgMusicPath != null) {
                     scene.bgMusic.musicPath = bgMusicPath
@@ -211,11 +204,11 @@ class StoryService(private val storyRepo: StoryRepo,
 
         // Assign remaining actors to cast members
         storyDto.cast.forEach { castMember ->
-            if (castMember.name.equals("راوي")) {
-                castMember.preferredRole = PreferredRole.NARRATOR;
+            if (castMember.name == "راوي") {
+                castMember.preferredRole = PreferredRole.NARRATOR
             }
             else{
-                castMember.preferredRole = PreferredRole.NONE;
+                castMember.preferredRole = PreferredRole.NONE
             }
             val key = VoiceActorKey(castMember.isAdult, castMember.gender, castMember.preferredRole)
             val availableActors = actorsMap[key]

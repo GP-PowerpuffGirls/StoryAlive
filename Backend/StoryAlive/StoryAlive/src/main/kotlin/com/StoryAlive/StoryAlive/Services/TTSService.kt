@@ -9,6 +9,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
+import java.net.SocketTimeoutException
 import java.util.concurrent.TimeUnit
 
 @Service
@@ -27,17 +28,26 @@ class TTSService(@Value("\${TTS_MODEL_URL}") private val modelUrl: String) {
         val taskId = getTaskId(storyDto)
 
         val timeoutMillis = 10 * 60 * 1000L
-        val pollInterval = 60_000L
+        val pollInterval = 10_000L // 10 sec
         val startTime = System.currentTimeMillis()
 
         // initial wait
-        Thread.sleep(60_000L)
+//        Thread.sleep(60_000L)
 
         while (true) {
 
-            val ttsResponse = getAudioFromTTS(taskId)
-            if (ttsResponse != null) {
-                return ttsResponse
+            try {
+                val ttsResponse = getAudioFromTTS(taskId)
+
+                if (ttsResponse != null) {
+                    return ttsResponse
+                }
+
+            } catch (e: java.net.SocketTimeoutException) {
+                println("TTS request timed out, retrying...")
+
+            } catch (e: Exception) {
+                println("Unexpected error during TTS polling: ${e.message}")
             }
 
             if (System.currentTimeMillis() - startTime > timeoutMillis) {
@@ -52,7 +62,7 @@ class TTSService(@Value("\${TTS_MODEL_URL}") private val modelUrl: String) {
     private fun getAudioFromTTS(taskId: String): TTSResponse? {
 
         val request = Request.Builder()
-            .url("$modelUrl/results/$taskId")
+            .url("${modelUrl.trimEnd('/')}/results/$taskId")
             .get()
             .build()
 
@@ -65,11 +75,22 @@ class TTSService(@Value("\${TTS_MODEL_URL}") private val modelUrl: String) {
             val jsonString = response.body!!.string()
             val node = mapper.readTree(jsonString)
 
-            if (node.has("status") && node.get("status").asText() == "processing") {
-                return null
-            }
+            val status = node.get("status")?.asText() ?: "unknown"
 
-            return mapper.readValue(jsonString, TTSResponse::class.java)
+            return when (status) {
+                "processing" -> null
+                "completed" -> {
+                    val fileName = node.get("fileName")?.asText()
+                        ?: throw RuntimeException("Missing fileName in completed task")
+                    val duration = node.get("duration")?.asDouble()
+                        ?: throw RuntimeException("Missing duration in completed task")
+                    val audioPath = node.get("audioPath")?.asText()
+                        ?: throw RuntimeException("Missing audioPath in completed task")
+                    TTSResponse(fileName, duration, audioPath)
+                }
+                "failed" -> throw RuntimeException("TTS failed: ${node.get("error")?.asText() ?: "Unknown"}")
+                else -> null  // unknown status → treat as still processing
+            }
         }
     }
 
@@ -90,7 +111,12 @@ class TTSService(@Value("\${TTS_MODEL_URL}") private val modelUrl: String) {
                 throw RuntimeException("TTS request failed: ${response.body?.string()}")
             }
 
-            return response.body!!.string()
+            try {
+                return response.body!!.string()
+            } catch (e: SocketTimeoutException) {
+                println("POST timed out but task may still be running...")
+                throw e
+            }
         }
     }
 
