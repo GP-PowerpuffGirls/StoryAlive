@@ -5,6 +5,7 @@ import com.StoryAlive.StoryAlive.DTOs.Story.StoryCreationDTO
 import com.StoryAlive.StoryAlive.DTOs.Story.StoryRequestDTO
 import com.StoryAlive.StoryAlive.DTOs.Key.CastKey
 import com.StoryAlive.StoryAlive.DTOs.Key.VoiceActorKey
+import com.StoryAlive.StoryAlive.DTOs.StoryResponseDTO
 import com.StoryAlive.StoryAlive.Enums.BGMusicEmotion
 import com.StoryAlive.StoryAlive.Enums.Emotion
 import com.StoryAlive.StoryAlive.Enums.Genre
@@ -16,6 +17,7 @@ import com.StoryAlive.StoryAlive.Models.BackgroundMusic
 import com.StoryAlive.StoryAlive.Models.Location
 import com.StoryAlive.StoryAlive.Models.VoiceActor
 import com.StoryAlive.StoryAlive.Repositories.StoryRepo
+import com.StoryAlive.StoryAlive.mapper.toResponse
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.bson.types.ObjectId
 import org.springframework.data.domain.Page
@@ -51,7 +53,7 @@ class StoryService(private val storyRepo: StoryRepo,
         return storyRepo.findAllByCreatorIdAndIsPrivateTrue(creatorId, pageable)
     }
 
-    fun createStory(storyRequest: StoryRequestDTO, pdf: MultipartFile): Story {
+    fun createStory(storyRequest: StoryRequestDTO, pdf: MultipartFile): StoryResponseDTO {
         val userId = userService.getCurrrenctUser().getUserId()
         println("starting LLM task!")
         val jsonString = llmService.generateStoryFromPdf(pdf.bytes)
@@ -88,7 +90,7 @@ class StoryService(private val storyRepo: StoryRepo,
         currentStory.finalAudioPath = ttsResponse.audioPath
         currentStory.pdfPath = pdfPath
         currentStory.jsonPath = jsonPath
-        return storyRepo.save(currentStory)
+        return storyRepo.save(currentStory).toResponse()
     }
 
     fun createStoryDummy(storyId: ObjectId): Story {

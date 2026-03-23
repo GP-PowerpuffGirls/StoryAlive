@@ -2,6 +2,7 @@ package com.StoryAlive.StoryAlive.Controllers
 
 import Story
 import com.StoryAlive.StoryAlive.DTOs.Story.StoryRequestDTO
+import com.StoryAlive.StoryAlive.DTOs.StoryResponseDTO
 import com.StoryAlive.StoryAlive.Services.StoryService
 import io.ktor.util.StatelessHmacNonceManager
 import org.bson.types.ObjectId
@@ -35,7 +36,7 @@ class StoryController(private val storyService: StoryService) {
     fun createStory(
         @RequestPart storyRequestDTO: StoryRequestDTO,
         @RequestPart("file") file: MultipartFile
-    ): Story {
+    ): StoryResponseDTO {
         return storyService.createStory(storyRequestDTO, file)
     }
 
