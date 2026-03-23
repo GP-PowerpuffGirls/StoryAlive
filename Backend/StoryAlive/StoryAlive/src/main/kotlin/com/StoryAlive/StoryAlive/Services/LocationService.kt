@@ -13,11 +13,14 @@ import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
 
 @Service
-class LocationService (val locationRepo: LocationRepo, val supabaseStorageService: SupabaseStorageService) {
+class LocationService (val locationRepo: LocationRepo, val supabaseStorageService: SupabaseStorageService, val userService: UserService) {
 
     fun getAllLocations( pageNumber:Int, pageSize:Int ): Page<Location> {
         val pageable: Pageable = PageRequest.of(pageNumber, pageSize);
         return locationRepo.findAll(pageable)
+    }
+    fun getAllLocationsList(): List<Location> {
+        return locationRepo.findAll().toList()
     }
 
     fun getLocationById(locationId: ObjectId): LocationDto {
@@ -29,21 +32,16 @@ class LocationService (val locationRepo: LocationRepo, val supabaseStorageServic
     }
 
     fun saveLocation(request: LocationDto, file: MultipartFile) : LocationDto {
-        val userId = getCurrentUserId()
-        return saveLocationToCloud(request, file, userId)
+        var location = Location(locationId = ObjectId(), locationName = request.locationName, sfxPath = "")
+        var locationDto = saveLocationToCloud(request, file, location.locationId)
+        location.sfxPath = locationDto.sfxPath
+        locationRepo.save(location)
+        return locationDto
     }
 
-    private fun getCurrentUserId(): ObjectId {
-        val user = SecurityContextHolder
-            .getContext()
-            .authentication
-            ?.principal as CurrentUserDetails
-        return user.getUserId()
-    }
+    private fun saveLocationToCloud(request: LocationDto, file: MultipartFile, locationId: ObjectId): LocationDto {
 
-    private fun saveLocationToCloud(request: LocationDto, file: MultipartFile, userId: ObjectId): LocationDto {
-
-        val sfxUrl = supabaseStorageService.saveAudioToCloud(file, userId)
+        val sfxUrl = supabaseStorageService.saveAudioToCloud(file, locationId, "location-audio-files")
 
         return LocationDto(
                 locationName = request.locationName,

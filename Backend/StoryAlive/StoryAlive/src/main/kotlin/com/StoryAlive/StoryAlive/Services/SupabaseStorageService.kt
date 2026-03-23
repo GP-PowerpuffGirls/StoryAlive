@@ -52,11 +52,10 @@ class SupabaseStorageService(
         return pdfUrl
     }
 
-    fun saveAudioToCloud(audio: MultipartFile, actorId: ObjectId): String {
+    fun saveAudioToCloud(audio: MultipartFile, actorId: ObjectId, usedBucket: String): String {
 
-        val allowedTypes = listOf("audio/mpeg", "audio/wav", "audio/ogg")
-        if (audio.contentType !in allowedTypes) {
-            throw IllegalArgumentException("Only audio files (MP3, WAV, OGG) are allowed")
+        if (audio.contentType?.startsWith("audio/") != true) {
+            throw IllegalArgumentException("Only audio files are allowed")
         }
         val safeName = audio.originalFilename!!.replace("\\s+".toRegex(), "_")
         val path = "${actorId}/${UUID.randomUUID()}_$safeName"
@@ -65,8 +64,22 @@ class SupabaseStorageService(
             fileBytes = audio.bytes,
             path = path,
             contentType = audio.contentType!!,
-            usedBucket = "voice-actor-files"
+            usedBucket = usedBucket
         )
+        return audioUrl
+    }
+    fun saveAudioToCloud(audioBytes: ByteArray, fileName: String, storyId: ObjectId): String {
+
+        val safeName = fileName.replace("\\s+".toRegex(), "_")
+        val path = "${storyId}/final/${UUID.randomUUID()}_$safeName"
+
+        val audioUrl = uploadFile(
+            fileBytes = audioBytes,
+            path = path,
+            contentType = "audio/mpeg",
+            usedBucket = "story-audio-files"
+        )
+
         return audioUrl
     }
 

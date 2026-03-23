@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service
 import java.util.concurrent.TimeUnit
 
 @Service
-class AIService(@Value("\${ai.model.url}") private val modelUrl: String) {
+class LLMService(@Value("\${ai.model.url}") private val modelUrl: String) {
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)

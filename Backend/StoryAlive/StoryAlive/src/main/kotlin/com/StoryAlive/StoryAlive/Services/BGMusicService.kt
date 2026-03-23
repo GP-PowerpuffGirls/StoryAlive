@@ -12,4 +12,7 @@ class BGMusicService(private val bgMusicRepo: BgMusicRepo) {
         var bgMusic: BackgroundMusic= BackgroundMusic(ObjectId(),bgMusicDTO.musicPath, bgMusicDTO.emotion, bgMusicDTO.forKids)
         return bgMusicRepo.save(bgMusic)
     }
+    fun getAllBGMusicByForKids(forKids: Boolean): List<BackgroundMusic>{
+        return bgMusicRepo.findAllByForKids(forKids)
+    }
 }
