@@ -225,15 +225,28 @@ class StoryService(private val storyRepo: StoryRepo,
             sentences.forEach { sentence ->
                 val actorId = currentStory.voiceActors.entries.firstOrNull { it.value.second == sentence.speaker }?.key
                     ?: throw RuntimeException("No actor assigned for speaker ${sentence.speaker}")
-                val audio = actorAudioIndex[actorId]?.get(sentence.emotion to sentence.intensity)
+                val intensitiesPriority = getIntensityFallbacks(sentence.intensity)
+                val audio = actorAudioIndex[actorId]?.let { emotionMap ->
+                    intensitiesPriority
+                        .firstNotNullOfOrNull { intensity ->
+                            emotionMap[sentence.emotion to intensity]
+                        }
+                }
                     ?: actorAudioIndex[actorId]?.get(Emotion.NARRATION to Intensity.LOW)
-                    ?: throw RuntimeException("No audio found for actor $actorId with emotion ${sentence.emotion} and intensity ${sentence.intensity}")
+                    ?: throw RuntimeException(
+                        "No audio found for actor $actorId with emotion ${sentence.emotion} and intensity ${sentence.intensity}"
+                    )
                 val castKey = CastKey(actorId, sentence.speaker, sentence.emotion, sentence.intensity)
                 castMap[castKey] = audio
                 sentence.speaker = castKey.castName
                 sentence.prosodyReference = audio.filepath
             }
         }
+    }
+    fun getIntensityFallbacks(base: Intensity): List<Intensity> = when (base) {
+        Intensity.LOW -> listOf(Intensity.LOW, Intensity.MEDIUM, Intensity.HIGH)
+        Intensity.MEDIUM -> listOf(Intensity.MEDIUM, Intensity.LOW, Intensity.HIGH)
+        Intensity.HIGH -> listOf(Intensity.HIGH, Intensity.MEDIUM, Intensity.LOW)
     }
 
 
