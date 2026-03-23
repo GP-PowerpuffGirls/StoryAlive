@@ -1,5 +1,6 @@
 package com.StoryAlive.StoryAlive.Services
 
+import Story
 import com.StoryAlive.StoryAlive.DTOs.CurrentUserDetails
 import com.StoryAlive.StoryAlive.DTOs.UserDTO
 import com.StoryAlive.StoryAlive.DTOs.UserUpdateRequest
@@ -12,19 +13,13 @@ import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.web.server.ResponseStatusException
 import java.util.Optional
-import kotlin.collections.List
 
 @Service
 class UserService ( private val userRepo: UserRepo, private val hashEncoder : HashEncoder) {
 
     public fun getUserData() : UserDTO{
 
-        val currentUser = (SecurityContextHolder
-            .getContext()
-            .authentication
-            ?.principal) as CurrentUserDetails
-
-        val userId : ObjectId = currentUser.getUserId()
+        val userId : ObjectId = getCurrentUser().getUserId()
         val user: Optional<User> = userRepo.findById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid access token")
 
         return UserDTO(
@@ -40,14 +35,17 @@ class UserService ( private val userRepo: UserRepo, private val hashEncoder : Ha
 
     }
 
+    public fun getUserFavouriteStories() : List<ObjectId>{
+
+        val userId : ObjectId = getCurrentUser().getUserId()
+        val user: Optional<User> = userRepo.findById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid access token")
+
+        return user.get().favouriteStories;
+    }
+
     public fun editUserData( updatedData : UserUpdateRequest) : UserDTO{
 
-        val currentUser = (SecurityContextHolder
-            .getContext()
-            .authentication
-            ?.principal) as CurrentUserDetails
-
-        val userId : ObjectId = currentUser.getUserId()
+        val userId : ObjectId = getCurrentUser().getUserId()
         val user: Optional<User> = userRepo.findById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid access token")
 
         var hashedPassword="";
@@ -81,11 +79,39 @@ class UserService ( private val userRepo: UserRepo, private val hashEncoder : Ha
             totalStoriesCount = updatedUser.totalStoriesCount
         )
     }
-    fun getCurrrenctUser(): CurrentUserDetails {
+
+    fun getCurrentUser(): CurrentUserDetails {
         val auth = SecurityContextHolder.getContext().authentication
         require(auth != null && auth.principal is CurrentUserDetails)
         return auth.principal as CurrentUserDetails
     }
 
+    fun addStoryToHistory(storyId: ObjectId) {
 
+        val userId : ObjectId = getCurrentUser().getUserId()
+        val user: Optional<User> = userRepo.findById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid access token")
+
+        val newHistory = user.get().historyStories + storyId
+
+        userRepo.save(
+            User(
+                historyStories = newHistory,
+
+                userId = userId,
+                firstName = user.get().firstName,
+                lastName = user.get().lastName,
+                email = user.get().email,
+                password = user.get().password ,
+                age = user.get().age,
+                )
+        )
+
+    }
+
+    fun getHistoryStories() : List<ObjectId>{
+        val userId : ObjectId = getCurrentUser().getUserId()
+        val user: Optional<User> = userRepo.findById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid access token")
+
+        return user.get().historyStories;
+    }
 }

@@ -1,0 +1,20 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="StoryAlive" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <option name="ALTERNATIVE_JRE_PATH" value="17" />
+    <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
+    <envs>
+      <env name="AI_MODEL_URL" value="https://habiba-hamed-llm-storyalive.hf.space/process;" />
+      <env name="JWT_SECRET_BASE64" value="78Tpp9eBN8yButVYKpcZag4sIW+yBjWkWx2mo0ISEKM=" />
+      <env name="MONGO_URI" value="mongodb+srv://mennamohamedd2023_db_user:rbrRcB3A35XEC42f@storyalivedb.d3qnmg1.mongodb.net/storyalive" />
+      <env name="SUPABASE_BUCKET" value="pdf-files" />
+      <env name="SUPABASE_KEY" value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2bHh2aGRnYWNrdHNneWt5Y2ttIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTk2MTQ5MSwiZXhwIjoyMDg3NTM3NDkxfQ.tzfHcbzwzctHDDDp3vk4JGz30ajN2szncAV-1wK7_pM" />
+      <env name="SUPABASE_URL" value="https://kvlxvhdgacktsgykyckm.supabase.co/" />
+      <env name="TTS_MODEL_URL" value="https://mariakaiser-tts-api.hf.space/tts/" />
+    </envs>
+    <module name="StoryAlive.main" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.StoryAlive.StoryAlive.StoryAliveApplication" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

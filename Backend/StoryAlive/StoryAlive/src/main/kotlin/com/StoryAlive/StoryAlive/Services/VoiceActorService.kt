@@ -1,6 +1,5 @@
 package com.StoryAlive.StoryAlive.Services
 
-import com.StoryAlive.StoryAlive.DTOs.CurrentUserDetails
 import com.StoryAlive.StoryAlive.DTOs.VoiceActorRequest
 import com.StoryAlive.StoryAlive.Enums.Emotion
 import com.StoryAlive.StoryAlive.Enums.Intensity
@@ -11,7 +10,6 @@ import org.bson.types.ObjectId
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
-import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
 import java.util.Optional
@@ -42,7 +40,7 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo, val supabaseStorageS
 
     fun getAllPrivateVoiceActorsOfUser(pageNumber: Int, pageSize: Int): Page<VoiceActor> {
 
-        val userId = userService.getCurrrenctUser().getUserId()
+        val userId = userService.getCurrentUser().getUserId()
 
         val pageable: Pageable = PageRequest.of(pageNumber, pageSize);
 
@@ -53,7 +51,7 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo, val supabaseStorageS
     fun saveVoiceActor(request: VoiceActorRequest, files: List<MultipartFile>): VoiceActorRequest {
 
         if (files.size != request.audios.size) throw IllegalArgumentException("Files count must match audio metadata count")
-        val userId = userService.getCurrrenctUser().getUserId()
+        val userId = userService.getCurrentUser().getUserId()
 
         val savedActor: VoiceActor
         val actorName = request.actorName.trim().lowercase()

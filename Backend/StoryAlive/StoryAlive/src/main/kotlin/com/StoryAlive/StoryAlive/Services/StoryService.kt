@@ -23,7 +23,6 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
-import java.util.Optional
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.forEach
@@ -38,6 +37,7 @@ class StoryService(private val storyRepo: StoryRepo,
                    private val bgMusicService: BGMusicService,
                    private val locationService: LocationService,
                    private val userService: UserService) {
+
     val mapper = jacksonObjectMapper()
 
     fun getAllStories(pageNumber: Int, pageSize: Int): Page<Story> {
@@ -45,14 +45,31 @@ class StoryService(private val storyRepo: StoryRepo,
         return storyRepo.findAllByIsPrivateFalse(pageable)
     }
 
+    fun getAllFavouriteStories(pageNumber: Int, pageSize: Int): Page<Story>{
+        val pageable: Pageable = PageRequest.of(pageNumber, pageSize)
+        val favouriteStoriesIds = userService.getUserFavouriteStories();
+        return storyRepo.findByStoryIdIn(favouriteStoriesIds, pageable);
+    }
+
     fun getAllPrivateStories(pageNumber: Int, pageSize: Int): Page<Story> {
         val pageable = PageRequest.of(pageNumber, pageSize)
-        val creatorId: ObjectId = userService.getCurrrenctUser().getUserId()
+        val creatorId: ObjectId = userService.getCurrentUser().getUserId()
         return storyRepo.findAllByCreatorIdAndIsPrivateTrue(creatorId, pageable)
     }
 
+    fun getStoryById(id: ObjectId) : Story {
+        userService.addStoryToHistory(id);
+        return storyRepo.findById(id).get()
+    }
+
+    fun getHistory(pageNumber: Int, pageSize: Int) : Page<Story> {
+        val pageable: Pageable = PageRequest.of(pageNumber, pageSize)
+        val historyIds = userService.getHistoryStories()
+        return storyRepo.findByStoryIdIn(historyIds, pageable);
+    }
+
     fun createStory(storyRequest: StoryRequestDTO, pdf: MultipartFile): Story {
-        val userId = userService.getCurrrenctUser().getUserId()
+        val userId = userService.getCurrentUser().getUserId()
         println("starting LLM task!")
         val jsonString = llmService.generateStoryFromPdf(pdf.bytes)
         println("LLM task finished")
@@ -108,16 +125,17 @@ class StoryService(private val storyRepo: StoryRepo,
         val updatedJson = mapper.writeValueAsString(storyDto)
         println(" STORY DTO HERE $storyDto")
         val ttsResponse = ttsService.generateAudioFromStory(storyDto)
-        val jsonPath = supabaseStorageService.saveJsonToCloud(updatedJson, userService.getCurrrenctUser().getUserId())
+        val jsonPath = supabaseStorageService.saveJsonToCloud(updatedJson, userService.getCurrentUser().getUserId())
         currentStory.duration = ttsResponse.duration
         currentStory.finalAudioPath = ttsResponse.audioPath
         currentStory.jsonPath = jsonPath
         return storyRepo.save(currentStory)
     }
 
+
     //HELPER FUNCTIONS
     fun createStoryMetaData(storyRequest: StoryRequestDTO): Story {
-        val currentUser = userService.getCurrrenctUser()
+        val currentUser = userService.getCurrentUser()
 
         val voiceActorsMap: MutableMap<ObjectId, Pair<String, String>> =
             if (storyRequest.voiceActors.isNullOrEmpty()) {
@@ -260,6 +278,7 @@ class StoryService(private val storyRepo: StoryRepo,
             }
         }
     }
+
     fun getIntensityFallbacks(base: Intensity): List<Intensity> = when (base) {
         Intensity.LOW -> listOf(Intensity.LOW, Intensity.MEDIUM, Intensity.HIGH)
         Intensity.MEDIUM -> listOf(Intensity.MEDIUM, Intensity.LOW, Intensity.HIGH)
