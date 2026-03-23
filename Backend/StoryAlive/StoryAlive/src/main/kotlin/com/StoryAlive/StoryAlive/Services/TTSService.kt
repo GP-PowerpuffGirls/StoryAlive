@@ -27,7 +27,7 @@ class TTSService(@Value("\${TTS_MODEL_URL}") private val modelUrl: String) {
 
         val taskId = getTaskId(storyDto)
 
-        val timeoutMillis = 10 * 60 * 1000L
+        val timeoutMillis = 60 * 60 * 1000L
         val pollInterval = 10_000L // 10 sec
         val startTime = System.currentTimeMillis()
 

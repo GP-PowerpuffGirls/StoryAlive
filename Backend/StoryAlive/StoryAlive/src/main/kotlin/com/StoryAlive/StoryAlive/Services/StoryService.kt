@@ -53,22 +53,36 @@ class StoryService(private val storyRepo: StoryRepo,
 
     fun createStory(storyRequest: StoryRequestDTO, pdf: MultipartFile): Story {
         val userId = userService.getCurrrenctUser().getUserId()
+        println("starting LLM task!")
         val jsonString = llmService.generateStoryFromPdf(pdf.bytes)
+        println("LLM task finished")
+
         val storyDto: StoryCreationDTO = mapper.readValue(jsonString, StoryCreationDTO::class.java)
+        println("creating metadata")
         val currentStory= createStoryMetaData(storyRequest)
+        println("creating metadata finished")
+
         storyDto.storyId = currentStory.storyId.toString()
+
+        println("assigning actors")
         assignActorsToCast(currentStory, storyDto)
+        println("assigning actors finished")
+
         if (currentStory.hasBackgroundMusic) {
             assignBGMusicToScene(currentStory, storyDto)
         }
         if (currentStory.hasSfx) {
             assignSfxToScene(storyDto)
         }
+        println("generating story")
         val ttsResponse = ttsService.generateAudioFromStory(storyDto)
+        println("generating story finished")
 
+        println("saving to cloud")
         val updatedJson = mapper.writeValueAsString(storyDto)
         val jsonPath = supabaseStorageService.saveJsonToCloud(updatedJson, userId)
         val pdfPath = supabaseStorageService.savePdfToCloud(pdf, userId)
+        println("done")
 
         currentStory.duration = ttsResponse.duration
         currentStory.finalAudioPath = ttsResponse.audioPath
@@ -106,18 +120,18 @@ class StoryService(private val storyRepo: StoryRepo,
         val currentUser = userService.getCurrrenctUser()
 
         val voiceActorsMap: MutableMap<ObjectId, Pair<String, String>> =
-            (if (storyRequest.voiceActors.isNullOrEmpty()) {
-                emptyMap()
+            if (storyRequest.voiceActors.isNullOrEmpty()) {
+                mutableMapOf()
             } else {
                 storyRequest.voiceActors.mapValues { (actorId) ->
-                    val actor: Optional<VoiceActor> = voiceActorService.getAudioByActorId(actorId)
+                    val actor = voiceActorService.getAudioByActorId(actorId)
                     if (actor.get().audios.isNotEmpty()) {
                         Pair(actor.get().actorName, "")
                     } else {
                         Pair("", "")
                     }
-                }
-            }) as MutableMap<ObjectId, Pair<String, String>>
+                }.toMutableMap()
+            }
 
         val newStory = Story(
             storyId = ObjectId(),
@@ -180,7 +194,7 @@ class StoryService(private val storyRepo: StoryRepo,
 
     fun assignActorsToCast(currentStory: Story, storyDto: StoryCreationDTO) {
         val allVoiceActors: List<VoiceActor> = voiceActorService.getAllPublicVoiceActors()
-
+        println("all voice actors: $allVoiceActors" )
         // Build audio lookup for fast access
         val actorAudioIndex: Map<ObjectId, Map<Pair<Emotion, Intensity>, Audio>> = allVoiceActors.associate { actor ->
             actor.voiceActorId to actor.audios.associateBy { it.emotion to it.intensity }
@@ -191,6 +205,7 @@ class StoryService(private val storyRepo: StoryRepo,
             .groupBy { VoiceActorKey(it.isAdult, it.gender, it.preferredRole) }
             .mapValues { it.value.map { actor -> actor.voiceActorId to actor.actorName }.toMutableList() }
             .toMutableMap()
+        println("actors map: $actorsMap" )
 
         // Assign user-selected actors first
         val mutableVoiceActors = currentStory.voiceActors.toMutableMap()
@@ -201,7 +216,7 @@ class StoryService(private val storyRepo: StoryRepo,
             actorsMap[key]?.removeIf { it.first == actorId }
             mutableVoiceActors[actorId] = pair
         }
-
+        println("entire cast: ${storyDto.cast}")
         // Assign remaining actors to cast members
         storyDto.cast.forEach { castMember ->
             if (castMember.name == "راوي") {
@@ -213,6 +228,8 @@ class StoryService(private val storyRepo: StoryRepo,
             val key = VoiceActorKey(castMember.isAdult, castMember.gender, castMember.preferredRole)
             val availableActors = actorsMap[key]
                 ?: throw RuntimeException("No available actor for cast member ${castMember.name} with $key")
+            println("cast member: $castMember")
+            println("available actors while mapping to cast: $availableActors")
             val selectedActor = availableActors.removeAt(0)
             mutableVoiceActors[selectedActor.first] = selectedActor.second to castMember.name
         }
