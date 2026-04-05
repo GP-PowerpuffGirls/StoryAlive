@@ -173,7 +173,7 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo, val supabaseStorageS
     }
     fun saveVoiceActorToDB(request: VoiceActorRequest): VoiceActorRequest {
 
-        val userId = userService.getCurrrenctUser().getUserId()
+        val userId = userService.getCurrentUser().getUserId()
 
         val savedActor: VoiceActor
         val actorName = request.actorName.trim().lowercase()

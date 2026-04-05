@@ -59,7 +59,7 @@ class StoryController(private val storyService: StoryService) {
     fun createStory(
         @RequestPart storyRequestDTO: StoryRequestDTO,
         @RequestPart("file") file: MultipartFile
-    ): StoryResponseDTO {
+    ): Story {
         return storyService.createStory(storyRequestDTO, file)
     }
 
