@@ -160,5 +160,84 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo, val supabaseStorageS
         }
 
     }
+
+    fun saveListVoiceActorToDB(voiceActors: List<VoiceActorRequest>): MutableList<VoiceActorRequest> {
+        val results = mutableListOf<VoiceActorRequest>()
+
+        for (voiceActor in voiceActors) {
+
+            val saved = saveVoiceActorToDB(voiceActor)
+
+            results.add(saved)
+        }
+
+        return results
+    }
+    fun saveVoiceActorToDB(request: VoiceActorRequest): VoiceActorRequest {
+
+        val userId = userService.getCurrrenctUser().getUserId()
+
+        val savedActor: VoiceActor
+        val actorName = request.actorName.trim().lowercase()
+        val voiceActorId = ObjectId();
+
+        if (request.isPrivate) {
+
+            // PRIVATE FLOW
+            val existingPrivate = voiceActorRepo.findByUserIdAndActorNameAndIsPrivateTrue(userId, actorName)
+
+            savedActor = if (existingPrivate != null) {
+                existingPrivate.audios += request.audios
+                voiceActorRepo.save(existingPrivate)
+            } else {
+                voiceActorRepo.save(
+                    VoiceActor(
+                        voiceActorId = voiceActorId,
+                        userId = userId,
+                        actorName = actorName,
+                        gender = request.gender,
+                        isAdult = request.isAdult,
+                        isPrivate = true,
+                        audios = request.audios,
+                        preferredRole = request.preferredRole
+                    )
+                )
+            }
+
+        }
+        else {
+
+            // PUBLIC FLOW
+            val existingPublic =
+                voiceActorRepo.findByActorNameAndIsPrivateFalse(actorName)
+
+            savedActor = if (existingPublic != null) {
+                existingPublic.audios += request.audios
+                voiceActorRepo.save(existingPublic)
+            } else {
+                voiceActorRepo.save(
+                    VoiceActor(
+                        voiceActorId = ObjectId(),
+                        userId = null,
+                        actorName = actorName,
+                        gender = request.gender,
+                        isAdult = request.isAdult,
+                        isPrivate = false,
+                        audios = request.audios,
+                        preferredRole = request.preferredRole
+                    )
+                )
+            }
+        }
+
+        return VoiceActorRequest(
+            actorName = savedActor.actorName,
+            gender = savedActor.gender,
+            isAdult = savedActor.isAdult,
+            isPrivate = savedActor.isPrivate,
+            audios = request.audios,
+            preferredRole = savedActor.preferredRole
+        )
+    }
 }
 

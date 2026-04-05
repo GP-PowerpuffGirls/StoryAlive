@@ -9,6 +9,7 @@ import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RequestPart
@@ -49,6 +50,12 @@ class VoiceActorController(private val voiceActorService: VoiceActorService){
     @PostMapping("/list", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun createVoiceActorList(@Valid @RequestPart("request")  requests: List<VoiceActorRequest>, @RequestPart("files") files: List<MultipartFile>): ResponseEntity<List<VoiceActorRequest>> {
         val createdActors = voiceActorService.saveListVoiceActor(requests, files)
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdActors)
+    }
+
+    @PostMapping("/list-DB")
+    fun createVoiceActorDBList(@Valid @RequestBody voiceActors: List<VoiceActorRequest>): ResponseEntity<List<VoiceActorRequest>> {
+        val createdActors = voiceActorService.saveListVoiceActorToDB(voiceActors)
         return ResponseEntity.status(HttpStatus.CREATED).body(createdActors)
     }
 }
