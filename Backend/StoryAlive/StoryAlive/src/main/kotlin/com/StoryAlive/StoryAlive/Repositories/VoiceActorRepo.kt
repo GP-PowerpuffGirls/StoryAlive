@@ -24,5 +24,11 @@ interface VoiceActorRepo: MongoRepository<VoiceActor, ObjectId> {
     fun findByUserIdAndActorNameAndIsPrivateTrue(userId: ObjectId, actorName: String): VoiceActor?
     fun findByActorNameAndIsPrivateFalse(actorName: String): VoiceActor?
     fun findAllByIsPrivateFalse(): List<VoiceActor>
-
+    @Query(
+        "{ \$or: [ " +
+                "{ 'isPrivate': false }, " +
+                "{ 'isPrivate': true, 'userId': ?0 } " +
+                "] }"
+    )
+    fun findAllPublicAndUserPrivate(userId: ObjectId, pageable: Pageable): Page<VoiceActor>
 }

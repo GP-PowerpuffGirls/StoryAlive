@@ -4,6 +4,7 @@ import com.StoryAlive.StoryAlive.DTOs.VoiceActorRequest
 import com.StoryAlive.StoryAlive.Models.VoiceActor
 import com.StoryAlive.StoryAlive.Services.VoiceActorService
 import jakarta.validation.Valid
+import org.springframework.data.domain.Page
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -23,17 +24,24 @@ class VoiceActorController(private val voiceActorService: VoiceActorService){
     @GetMapping
     fun getAllPublicVoiceActors(
         @RequestParam(defaultValue = "0") pageNumber:Int,
-        @RequestParam(defaultValue = "10") pageSize:Int): List<VoiceActor>
+        @RequestParam(defaultValue = "10") pageSize:Int): Page<VoiceActor>
     {
-        return voiceActorService.getAllPublicVoiceActors(pageNumber, pageSize).content
+        return voiceActorService.getAllPublicVoiceActors(pageNumber, pageSize)
     }
 
     @GetMapping("/private")
     fun getAllPrivateVoiceActorsOfUser(
         @RequestParam(defaultValue = "0") pageNumber:Int,
         @RequestParam(defaultValue = "10") pageSize:Int
-    ): List<VoiceActor>{
-        return voiceActorService.getAllPrivateVoiceActorsOfUser(pageNumber, pageSize).content
+    ): Page<VoiceActor>{
+        return voiceActorService.getAllPrivateVoiceActorsOfUser(pageNumber, pageSize)
+    }
+    @GetMapping("/all-user-available")
+    fun getAllAvailableVoiceActorsForUser(
+        @RequestParam(defaultValue = "0") pageNumber:Int,
+        @RequestParam(defaultValue = "10") pageSize:Int): Page<VoiceActor>
+    {
+        return voiceActorService.getAllAvailableVoiceActorsForUser(pageNumber, pageSize)
     }
 
 //!  Make sure In the Content-Type column click it and type: audio/wav for wav (or audio/mpeg for MP3s).
