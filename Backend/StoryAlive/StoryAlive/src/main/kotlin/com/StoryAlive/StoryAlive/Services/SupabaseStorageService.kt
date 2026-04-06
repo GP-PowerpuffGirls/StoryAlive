@@ -68,16 +68,16 @@ class SupabaseStorageService(
         )
         return audioUrl
     }
-    fun saveAudioToCloud(audioBytes: ByteArray, fileName: String, storyId: ObjectId): String {
+    fun saveAudioToCloud(audioBytes: ByteArray, fileName: String="file.wav", actorId: ObjectId, usedBucket: String): String {
 
         val safeName = fileName.replace("\\s+".toRegex(), "_")
-        val path = "${storyId}/final/${UUID.randomUUID()}_$safeName"
+        val path = "${actorId}/${UUID.randomUUID()}_$safeName"
 
         val audioUrl = uploadFile(
             fileBytes = audioBytes,
             path = path,
-            contentType = "audio/mpeg",
-            usedBucket = "story-audio-files"
+            contentType = "audio/wav",
+            usedBucket = usedBucket
         )
 
         return audioUrl

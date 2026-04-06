@@ -13,7 +13,7 @@ data class VoiceActorRequest (
     @field:NotNull
     val gender: Gender,
     @field:NotNull
-    val isAdult: Boolean = true,
+    val isAdult: Boolean,
     @field:NotNull
     val isPrivate: Boolean,
     val audios: @NotEmpty List<Audio>,

@@ -1,6 +1,5 @@
 package com.StoryAlive.StoryAlive.Services
 
-import com.StoryAlive.StoryAlive.DTOs.CurrentUserDetails
 import com.StoryAlive.StoryAlive.DTOs.LocationDto
 import com.StoryAlive.StoryAlive.Models.Location
 import com.StoryAlive.StoryAlive.Repositories.LocationRepo
@@ -8,15 +7,14 @@ import org.bson.types.ObjectId
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
-import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
 
 @Service
-class LocationService (val locationRepo: LocationRepo, val supabaseStorageService: SupabaseStorageService, val userService: UserService) {
+class LocationService (val locationRepo: LocationRepo, val supabaseStorageService: SupabaseStorageService) {
 
     fun getAllLocations( pageNumber:Int, pageSize:Int ): Page<Location> {
-        val pageable: Pageable = PageRequest.of(pageNumber, pageSize);
+        val pageable: Pageable = PageRequest.of(pageNumber, pageSize)
         return locationRepo.findAll(pageable)
     }
     fun getAllLocationsList(): List<Location> {
@@ -32,8 +30,8 @@ class LocationService (val locationRepo: LocationRepo, val supabaseStorageServic
     }
 
     fun saveLocation(request: LocationDto, file: MultipartFile) : LocationDto {
-        var location = Location(locationId = ObjectId(), locationName = request.locationName, sfxPath = "")
-        var locationDto = saveLocationToCloud(request, file, location.locationId)
+        val location = Location(locationId = ObjectId(), locationName = request.locationName, sfxPath = "")
+        val locationDto = saveLocationToCloud(request, file, location.locationId)
         location.sfxPath = locationDto.sfxPath
         locationRepo.save(location)
         return locationDto
@@ -54,13 +52,19 @@ class LocationService (val locationRepo: LocationRepo, val supabaseStorageServic
         if(requests.size != files.size) throw IllegalArgumentException("Total files must match total audio metadata count")
 
         val locations = mutableListOf<LocationDto>()
-        var index = 0;
-        for (request in requests) {
+        for ((index, request) in requests.withIndex()) {
             val savedLocation = saveLocation(request, files[index])
             locations.add(savedLocation)
-            index++;
         }
         return locations
+    }
+
+    fun saveLocationListToDB(requests: List<LocationDto>): List<LocationDto> {
+        for (request in requests) {
+            val location = Location(locationId = ObjectId(), locationName = request.locationName, sfxPath = request.sfxPath)
+            locationRepo.save(location)
+        }
+        return requests
     }
 
 }

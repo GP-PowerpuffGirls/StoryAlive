@@ -2,6 +2,7 @@ package com.StoryAlive.StoryAlive.Controllers
 
 import Story
 import com.StoryAlive.StoryAlive.DTOs.Story.StoryRequestDTO
+import com.StoryAlive.StoryAlive.DTOs.StoryResponseDTO
 import com.StoryAlive.StoryAlive.Services.StoryService
 import io.ktor.util.StatelessHmacNonceManager
 import org.bson.types.ObjectId
@@ -15,12 +16,35 @@ import org.springframework.web.multipart.MultipartFile
 @RequestMapping("stories")
 class StoryController(private val storyService: StoryService) {
 
+    @GetMapping("/{storyId}")
+    fun getStory(
+        @PathVariable storyId: String,
+    ): Story {
+        return storyService.getStoryById(ObjectId(storyId))
+    }
+
     @GetMapping
     fun getAllStories(
         @RequestParam(defaultValue = "0") pageNumber: Int,
         @RequestParam(defaultValue = "10") pageSize: Int
     ): Page<Story> {
         return storyService.getAllStories(pageNumber, pageSize)
+    }
+
+    @GetMapping("favourites")
+    fun getAllFavouriteStories(
+        @RequestParam(defaultValue = "0") pageNumber: Int,
+        @RequestParam(defaultValue = "10") pageSize: Int
+    ): Page<Story> {
+        return storyService.getAllFavouriteStories(pageNumber, pageSize)
+    }
+
+    @GetMapping("history")
+    fun getAllHistoryStories(
+        @RequestParam(defaultValue = "0") pageNumber: Int,
+        @RequestParam(defaultValue = "10") pageSize: Int
+    ): Page<Story> {
+        return storyService.getHistory(pageNumber, pageSize)
     }
 
     @GetMapping("/private")
