@@ -22,6 +22,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -40,6 +43,7 @@ import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material.icons.outlined.VolumeUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilterChip
@@ -53,6 +57,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -71,9 +76,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.draw.clip
 import com.example.storyalive.components.StoryAliveTopBar
+import com.example.storyalive.model.StoryResponseDTO
+import com.example.storyalive.network.RetrofitClient
+import kotlinx.coroutines.launch
 
 class HistoryActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -119,39 +129,146 @@ data class StoryHistoryItem(
 )
 @Composable
 fun HistoryScreen(isLightTheme: Boolean=true,onStoryClick: (String,String) -> Unit){
-    val colors= themeColors(isLightTheme)
-    val historyList =listOf(
-        StoryHistoryItem("The Adventure Begins", "2/20/2026", "5:32", hasBgm = true),
-        StoryHistoryItem("Mystery of the Lost City", "2/18/2026", "8:15", hasBgm = true, hasSfx = true),
-        StoryHistoryItem("The Enchanted Garden", "2/15/2026", "6:48", hasSfx = true)
-    )
+    val colors = themeColors(isLightTheme)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val api = remember { RetrofitClient.createApi(context) }
+    val scope = rememberCoroutineScope()
+
+    var historyStories by remember { mutableStateOf<List<StoryResponseDTO>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var isLoadingMore by remember { mutableStateOf(false) }
+    var currentPage by remember { mutableStateOf(0) }
+    var totalPages by remember { mutableStateOf(1) }
+
+    val listState = rememberLazyGridState()
+    suspend fun loadHistoryStories(page: Int) {
+        try {
+            isLoadingMore = true
+            val response = api.getHistoryStories(pageNumber = page, pageSize = 10)
+            if (response.isSuccessful) {
+                val content = response.body()?.content ?: emptyList()
+                if (page == 0) historyStories = content
+                else historyStories = historyStories + content
+
+                totalPages = response.body()?.totalPages ?: 1
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            isLoading = false
+            isLoadingMore = false
+        }
+    }
+
+    LaunchedEffect(Unit) { loadHistoryStories(0) }
+    // Infinite scroll
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .collect { index ->
+                if (!isLoadingMore && !isLoading && index >= historyStories.size - 3 && currentPage + 1 < totalPages) {
+                    currentPage++
+                    scope.launch { loadHistoryStories(currentPage) }
+                }
+            }
+    }
+
     Column(modifier = Modifier.fillMaxSize().background(colors.background).padding(16.dp)) {
-        Text(
-            text = "Your Story History",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = colors.heading,
-            modifier = Modifier.padding(vertical = 16.dp)
-        )
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
-            items(historyList) { story ->
-                StoryCard(
-                    story = story,
-                    colors = colors,
-                    // Pass both title and date up to the Activity
-                    onNavigate = { onStoryClick(story.title, story.date) }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Your Story History",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.heading
                 )
+                Text(
+                    text = "Stories you have listened to",
+                    fontSize = 14.sp,
+                    color = colors.muted
+                )
+            }
+
+            Surface(
+                color = Color.White,
+                shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f)),
+                shadowElevation = 2.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.AccessTime,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = colors.muted
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "${historyStories.size} History",
+                        fontSize = 14.sp,
+                        color = colors.muted
+                    )
+                }
+            }
+        }
+        if (isLoading && historyStories.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(1),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                state = listState,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(historyStories.size) { index ->
+                    val story = historyStories[index]
+                    HistoryStoryCard(
+                        story = story,
+                        colors = colors,
+                        onClick = { onStoryClick(story.title, story.createdAt?: "Unknown Date")}
+                    )
+                }
+
+                if (isLoadingMore) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                }
             }
         }
     }
 }
 @Composable
-fun StoryCard(story: StoryHistoryItem,colors: com.example.storyalive.ui.theme.ThemeColors,onNavigate:()-> Unit){
+fun HistoryStoryCard(story: StoryResponseDTO,colors: com.example.storyalive.ui.theme.ThemeColors,onClick:()-> Unit){
+    val durationText = remember(story.duration) {
+        val minutes = story.duration.toInt()
+        val seconds = ((story.duration - minutes) * 60).toInt()
+        "%02d:%02d".format(minutes, seconds)
+    }
     Card(
         colors= CardDefaults.cardColors(containerColor = colors.card),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier.fillMaxWidth().clickable{onNavigate()},
+        modifier = Modifier.fillMaxWidth().clickable{onClick() },
     ) {
         Row(modifier = Modifier.padding(20.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -173,7 +290,7 @@ fun StoryCard(story: StoryHistoryItem,colors: com.example.storyalive.ui.theme.Th
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(text=story.date, color = colors.muted, fontSize = 14.sp)
+                    Text(text=story.createdAt, color = colors.muted, fontSize = 14.sp)
                     Spacer(modifier = Modifier.width(16.dp))
                     Icon(
                         imageVector = Icons.Outlined.PlayCircleOutline,
@@ -182,12 +299,12 @@ fun StoryCard(story: StoryHistoryItem,colors: com.example.storyalive.ui.theme.Th
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = story.duration,color=colors.muted, fontSize = 14.sp)
+                    Text(text = durationText,color=colors.muted, fontSize = 14.sp)
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 //Tags (BGM/SFX)
                 Row{
-                    if (story.hasBgm){
+                    if (story.hasBackgroundMusic){
                         TagBadge(text="Background Music",icon= Icons.Outlined.MusicNote,colors=colors)
                         Spacer(modifier = Modifier.width(8.dp))
                     }
@@ -199,7 +316,7 @@ fun StoryCard(story: StoryHistoryItem,colors: com.example.storyalive.ui.theme.Th
             }
             //Play Button
             FilledIconButton(
-                onClick = onNavigate,
+                onClick = onClick,
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.size(48.dp),
                 colors = IconButtonDefaults.filledIconButtonColors(containerColor = colors.accent)

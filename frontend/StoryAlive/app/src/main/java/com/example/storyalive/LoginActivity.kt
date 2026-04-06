@@ -173,7 +173,7 @@ fun LoginScreen(
 
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
-                                val response = RetrofitClient.api.login(request)
+                                val response = RetrofitClient.createApi(context).login(request)
 
                                 if (response.isSuccessful) {
                                     val tokens = response.body()

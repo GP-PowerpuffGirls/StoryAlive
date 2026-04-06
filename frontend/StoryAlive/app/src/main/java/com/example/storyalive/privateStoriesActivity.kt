@@ -31,10 +31,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,7 +48,10 @@ import com.example.storyalive.ui.theme.StoryAliveTheme
 import com.example.storyalive.ui.theme.themeColors
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.LineHeightStyle
 import com.example.storyalive.components.StoryAliveTopBar
+import com.example.storyalive.model.StoryResponseDTO
+import com.example.storyalive.network.RetrofitClient
 
 class privateStoriesActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -82,8 +87,53 @@ class privateStoriesActivity : ComponentActivity() {
     }
 }
 @Composable
-fun PrivateStoriesScreen(isLightTheme: Boolean = true,onStoryClick: (String, String) -> Unit) {
+fun PrivateStoriesScreen(isLightTheme: Boolean = true, onStoryClick: (String, String) -> Unit) {
     val colors = themeColors(isLightTheme)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val api = remember { RetrofitClient.createApi(context) }
+
+    var privateStories by remember { mutableStateOf<List<StoryResponseDTO>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var isLoadingMore by remember { mutableStateOf(false) }
+    var currentPage by remember { mutableStateOf(0) }
+    var totalPages by remember { mutableStateOf(1) }
+
+    val listState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+
+    // Function to fetch private stories
+    suspend fun loadPrivateStories(page: Int) {
+        try {
+            isLoadingMore = true
+            val response = api.getPrivateStories(pageNumber = page, pageSize = 10)
+            if (response.isSuccessful) {
+                val content = response.body()?.content ?: emptyList()
+
+                if (page == 0) privateStories = content
+                else privateStories = privateStories +  content
+
+                totalPages = response.body()?.totalPages ?: 1
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            isLoading = false
+            isLoadingMore = false
+        }
+    }
+
+    // Initial load
+    LaunchedEffect(Unit) { loadPrivateStories(0) }
+
+    // Infinite scroll
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .collect { index ->
+                if (!isLoadingMore && !isLoading && index >= privateStories.size - 3 && currentPage + 1 < totalPages) {
+                    currentPage++
+                    loadPrivateStories(currentPage)
+                }
+            }
+    }
 
     Column(
         modifier = Modifier
@@ -91,27 +141,21 @@ fun PrivateStoriesScreen(isLightTheme: Boolean = true,onStoryClick: (String, Str
             .background(colors.background)
             .padding(16.dp)
     ) {
-        // --- Header Section ---
+        // Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
+                Text("Private Stories", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = colors.heading)
                 Text(
-                    text = "Private Stories",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.heading
-                )
-                Text(
-                    text = "Stories that are kept private and not published to the community",
+                    "Stories that are kept private and not published to the community",
                     fontSize = 14.sp,
                     color = colors.muted
                 )
             }
 
-            // Private Count Badge
             Surface(
                 color = Color.White,
                 shape = RoundedCornerShape(8.dp),
@@ -124,29 +168,53 @@ fun PrivateStoriesScreen(isLightTheme: Boolean = true,onStoryClick: (String, Str
                 ) {
                     Icon(Icons.Outlined.Lock, contentDescription = null, modifier = Modifier.size(16.dp), tint = colors.muted)
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("1 Private", fontSize = 14.sp, color = colors.muted)
+                    Text("${privateStories.size} Private", fontSize = 14.sp, color = colors.muted)
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // --- Grid of Stories ---
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(1), // Fixed(1) matches your image better than Fixed(2)
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            item {
-                PrivateStoryCard(colors=colors,onClick = { onStoryClick("My Private Story", "3/11/2026") })
+        if (isLoading && privateStories.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                androidx.compose.material3.CircularProgressIndicator()
+            }
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(1),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                state = listState,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(privateStories.size) { index ->
+                    val story = privateStories[index]
+                    PrivateStoryCard(colors = colors,story=story, onClick = { onStoryClick(story.title, "Unknown Date") })
+                }
+
+                if (isLoadingMore) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            androidx.compose.material3.CircularProgressIndicator()
+                        }
+                    }
+                }
             }
         }
     }
 }
-
 @Composable
-fun PrivateStoryCard(colors: com.example.storyalive.ui.theme.ThemeColors,onClick: () -> Unit) {
+fun PrivateStoryCard(colors: com.example.storyalive.ui.theme.ThemeColors,onClick: () -> Unit,story: StoryResponseDTO) {
+    val durationText = remember(story.duration) {
+        val minutes = story.duration.toInt()
+        val seconds = ((story.duration - minutes) * 60).toInt()
+        "%02d:%02d".format(minutes, seconds)
+    }
     Card(
         modifier = Modifier
             .fillMaxWidth() // Matches the wide look in the image
@@ -158,15 +226,7 @@ fun PrivateStoryCard(colors: com.example.storyalive.ui.theme.ThemeColors,onClick
     ) {
         Column {
             // Image Section with Overlay
-            Box(modifier = Modifier.fillMaxWidth().height(180.dp)) {
-                // REAL IMAGE LOADING
-                // Replace the URL with your story's image link
-                AsyncImage(
-                    model = "https://images.unsplash.com/photo-1544947950-fa07a98d237f",
-                    contentDescription = "Story Thumbnail",
-                    contentScale = ContentScale.Crop, // This ensures the image fills the space
-                    modifier = Modifier.fillMaxSize()
-                )
+            Box(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), contentAlignment = Alignment.TopEnd) {
 
                 // Yellow Private Badge Overlay
                 Surface(
@@ -197,42 +257,24 @@ fun PrivateStoryCard(colors: com.example.storyalive.ui.theme.ThemeColors,onClick
                 }
             }
 
-            // Content Section
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "My Private Story",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.heading
-                )
-                Text(
-                    text = "A personal story kept private.",
-                    fontSize = 14.sp,
-                    color = colors.muted,
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
+                Text(story.title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.heading)
+                Text(story.description, fontSize = 14.sp, color = colors.muted, modifier = Modifier.padding(vertical = 4.dp))
 
-                // Tags Row
                 Row(modifier = Modifier.padding(vertical = 8.dp)) {
-                    TagChip("Drama", colors.accent, Color.White)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    TagChip("Drama", Color.LightGray.copy(0.3f), colors.muted)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    TagChip("Inspirational", Color.LightGray.copy(0.3f), colors.muted)
+                    story.tags.forEach { tag ->
+                        TagChip(tag, colors.accent, Color.White)
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
                 }
 
-                // Bottom Row (Time and Age)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.AccessTime, contentDescription = null, tint = colors.muted, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("30:20", fontSize = 12.sp, color = colors.muted)
+                        Text(durationText, fontSize = 12.sp, color = colors.muted)
                     }
-                    Text("Age 13+", fontSize = 12.sp, color = colors.muted)
+                    Text("Age ${story.minimumAge}+", fontSize = 12.sp, color = colors.muted)
                 }
             }
         }

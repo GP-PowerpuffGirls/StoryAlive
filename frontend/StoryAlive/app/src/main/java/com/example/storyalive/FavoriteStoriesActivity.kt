@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -32,10 +33,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,6 +49,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.storyalive.components.StoryAliveTopBar
+import com.example.storyalive.model.StoryResponseDTO
+import com.example.storyalive.network.RetrofitClient
 import com.example.storyalive.ui.theme.StoryAliveTheme
 import com.example.storyalive.ui.theme.themeColors
 
@@ -82,37 +87,56 @@ class FavoriteStoriesActivity : ComponentActivity() {
     }
 }
 
-data class FavoriteStory(
-    val title: String,
-    val author: String,
-    val description: String,
-    val duration: String,
-    val views: String,
-    val ageRating: String,
-    val imageUrl: String,
-    val tags: List<String>
-)
-
 @Composable
 fun FavoriteStoriesScreen(isLightTheme: Boolean = true, onStoryClick: (String, String) -> Unit) {
     val colors = themeColors(isLightTheme)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val api = remember { RetrofitClient.createApi(context) }
 
-    val favoriteList = listOf(
-        FavoriteStory(
-            "The Enchanted Forest", "Emma Wilson",
-            "A magical journey through an ancient forest filled with mystical creatures.",
-            "45:30", "1250", "Age 8+",
-            "https://images.unsplash.com/photo-1441974231531-c6227db76b6e",
-            listOf("Fantasy", "Magic", "Adventure")
-        ),
-        FavoriteStory(
-            "Space Explorers", "Sarah Johnson",
-            "Join a crew of astronauts on their mission to discover new worlds.",
-            "38:45", "1100", "Age 10+",
-            "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa",
-            listOf("Science Fiction", "Space", "Adventure")
-        )
-    )
+    var favoriteStories by remember { mutableStateOf<List<StoryResponseDTO>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var isLoadingMore by remember { mutableStateOf(false) }
+
+    var currentPage by remember { mutableStateOf(0) }
+    var totalPages by remember { mutableStateOf(1) }
+
+    val listState = rememberLazyListState()
+
+    // Function to fetch favorites from API
+    suspend fun loadFavorites(page: Int) {
+        try {
+            isLoadingMore = true
+            val response = api.getFavorites(pageNumber = page, pageSize = 10) // Adjust page size
+            if (response.isSuccessful) {
+                val content = response.body()?.content ?: emptyList()
+
+                if (page == 0) favoriteStories = content
+                else favoriteStories = favoriteStories + content
+                totalPages = response.body()?.totalPages ?: 1
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            isLoading = false
+            isLoadingMore = false
+        }
+    }
+
+    // Initial load
+    LaunchedEffect(Unit) {
+        loadFavorites(0)
+    }
+
+    // Infinite scroll for pagination
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .collect { index ->
+                if (!isLoadingMore && !isLoading && index >= favoriteStories.size - 3 && currentPage + 1 < totalPages) {
+                    currentPage++
+                    loadFavorites(currentPage)
+                }
+            }
+    }
 
     Column(
         modifier = Modifier
@@ -157,35 +181,63 @@ fun FavoriteStoriesScreen(isLightTheme: Boolean = true, onStoryClick: (String, S
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("${favoriteList.size} Favorites", fontSize = 14.sp, color = colors.muted)
+                    Text(
+                        "${favoriteStories.size} Favorites",
+                        fontSize = 14.sp,
+                        color = colors.muted
+                    )
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-
-        // --- List ---
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-            contentPadding = PaddingValues(bottom = 80.dp)
-        ) {
-            items(favoriteList) { story ->
-                FavoriteStoryCard(
-                    story = story,
-                    colors = colors,
-                    onClick = { onStoryClick(story.title, "Unkown Date") }
-                )
+        if (isLoading && favoriteStories.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                androidx.compose.material3.CircularProgressIndicator()
             }
+        } else {
+            LazyColumn(
+                state = listState,
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                contentPadding = PaddingValues(bottom = 80.dp)
+            ) {
+                items(favoriteStories) { story ->
+                    FavoriteStoryCard(
+                        story = story,
+                        colors = colors,
+                        onClick = { onStoryClick(story.title, "Unknown Date") }
+                    )
+                }
+
+                if (isLoadingMore) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            androidx.compose.material3.CircularProgressIndicator()
+                        }
+                    }
+                }
+            }
+
         }
     }
 }
 
 @Composable
 fun FavoriteStoryCard(
-    story: FavoriteStory,
+    story: StoryResponseDTO,
     colors: com.example.storyalive.ui.theme.ThemeColors,
     onClick: () -> Unit
 ) {
+    val durationText = remember(story.duration) {
+        val minutes = story.duration.toInt()
+        val seconds = ((story.duration - minutes) * 60).toInt()
+        "%02d:%02d".format(minutes, seconds)
+    }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -200,12 +252,6 @@ fun FavoriteStoryCard(
                     .fillMaxWidth()
                     .height(180.dp)
             ) {
-                AsyncImage(
-                    model = story.imageUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
                 // Heart Icon Overlay
                 Icon(
                     Icons.Filled.Favorite,
@@ -225,7 +271,6 @@ fun FavoriteStoryCard(
                     fontWeight = FontWeight.Bold,
                     color = colors.heading
                 )
-                Text("by ${story.author}", fontSize = 14.sp, color = colors.muted)
 
                 Text(
                     story.description,
@@ -259,16 +304,16 @@ fun FavoriteStoryCard(
                             tint = colors.muted,
                             modifier = Modifier.size(16.dp)
                         )
-                        Text(" ${story.duration}  ", fontSize = 12.sp, color = colors.muted)
+                        Text(durationText, fontSize = 12.sp, color = colors.muted)
                         Icon(
                             Icons.Outlined.Visibility,
                             null,
                             tint = colors.muted,
                             modifier = Modifier.size(16.dp)
                         )
-                        Text(" ${story.views}", fontSize = 12.sp, color = colors.muted)
+                        Text("${story.numberOfViews} views", fontSize = 12.sp, color = colors.muted)
                     }
-                    Text(story.ageRating, fontSize = 12.sp, color = colors.muted)
+                    Text("Age ${story.minimumAge}+", fontSize = 12.sp, color = colors.muted)
                 }
             }
         }

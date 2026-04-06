@@ -1,8 +1,11 @@
 package com.example.storyalive
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -15,6 +18,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
@@ -24,11 +31,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
 import com.example.storyalive.components.StoryAliveTopBar
+import com.example.storyalive.model.StoryRequestDTO
+import com.example.storyalive.model.VoiceActorDTO
+import com.example.storyalive.model.VoiceActorRequest
+import com.example.storyalive.network.RetrofitClient
+import com.example.storyalive.network.createStoryRequestBody
 import com.example.storyalive.ui.theme.StoryAliveTheme
 import com.example.storyalive.ui.theme.ThemeColors
 import com.example.storyalive.ui.theme.themeColors
+import com.example.storyalive.utils.uriToFile
+import com.google.gson.Gson
+import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
 
 class UploadActivity : ComponentActivity() {
 
@@ -40,7 +59,9 @@ class UploadActivity : ComponentActivity() {
             StoryAliveTheme {
                 StoryAliveTheme {
                     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                        Column {
+                        Column(
+                            modifier = Modifier.padding(innerPadding)
+                        ) {
                             StoryAliveTopBar(selectedPage = "Upload")
                             UploadScreen()
                         }
@@ -65,38 +86,65 @@ fun UploadScreen(
 
     val colors = themeColors(isLightTheme)
     val context = LocalContext.current
-
+    val scope = rememberCoroutineScope()
     var pdfUri by remember { mutableStateOf<Uri?>(null) }
-
     var storyTitle by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var genre by remember { mutableStateOf("Fantasy") }
+    var genre by remember { mutableStateOf("") }
     var minAge by remember { mutableStateOf("") }
 
     var backgroundMusic by remember { mutableStateOf(false) }
     var sfx by remember { mutableStateOf(false) }
     var publish by remember { mutableStateOf(false) }
 
-    var selectedVoiceActor by remember { mutableStateOf("") }
-
+    var selectedActors by remember { mutableStateOf(setOf<String>()) }
     var selectedTags by remember { mutableStateOf(setOf<String>()) }
 
-    val genres = listOf("Fantasy", "Adventure", "Horror", "Comedy")
+    var genres by remember { mutableStateOf<List<String>>(emptyList()) }
+    var tags by remember { mutableStateOf<List<String>>(emptyList()) }
 
-    val tags = listOf(
-        "Magic",
-        "Adventure",
-        "Animals",
-        "Friendship",
-        "Mystery",
-        "Dragons"
-    )
+    var actors by remember { mutableStateOf<List<VoiceActorRequest>>(emptyList()) }
+    var currentPage by remember { mutableStateOf(0) }
+    var isLoadingActors by remember { mutableStateOf(false) }
+    var hasMoreActors by remember { mutableStateOf(true) }
 
-    val actors = listOf(
-        VoiceActor("Sarah Mitchell", "Female", "Adult"),
-        VoiceActor("Tommy Lee", "Male", "Kid"),
-        VoiceActor("James Cooper", "Male", "Adult")
-    )
+
+
+    fun loadActorsPage(page: Int, pageSize: Int = 10) {
+       if(!hasMoreActors || isLoadingActors) return
+        isLoadingActors=true
+        scope.launch {
+            try {
+                val response = RetrofitClient.createApi(context).getVoiceActors(page, pageSize)
+                if(response.isSuccessful){
+                    val body =response.body()
+                    val newActors = body?.content?:emptyList()
+                    actors = actors + newActors
+                    hasMoreActors = page < (body?.totalPages ?: 1) - 1
+                }
+            }catch (e: Exception) {
+                Toast.makeText(context, "Failed to load actors", Toast.LENGTH_SHORT).show()
+            }finally {
+                isLoadingActors=false
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        loadActorsPage(currentPage)
+        scope.launch {
+            try {
+                val enums = RetrofitClient.createApi(context).getEnums()
+                tags = enums["tags"] ?: emptyList()
+                genres = enums["genre"] ?: emptyList()
+                if (genres.isNotEmpty() && genre.isBlank()) {
+                    genre = genres.first()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to load data", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     val pdfPicker =
         rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
@@ -147,13 +195,20 @@ fun UploadScreen(
         VoiceActorCard(
             colors,
             actors,
-            selectedVoiceActor,
-            { selectedVoiceActor = it },
+            selectedActors,
+            { selectedActors = it },
             {
                 context.startActivity(
                     Intent(context, VoiceActorActivity::class.java)
                 )
-            }
+            },
+            loadNextPage = {
+                if (!isLoadingActors && hasMoreActors) {
+                    currentPage++
+                    loadActorsPage(currentPage)
+                }
+            },
+            hasMoreActors = hasMoreActors
         )
 
         AudioOptionsCard(
@@ -165,9 +220,76 @@ fun UploadScreen(
             publish,
             { publish = it }
         )
-
         Button(
-            onClick = { },
+            onClick = {
+                if (pdfUri == null) {
+                    Toast.makeText(context, "Please select a PDF first", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+
+                scope.launch {
+                    try {
+
+                        // ✅ Convert PDF
+                        val file = uriToFile(context, pdfUri!!)
+
+                        val requestFile = file.asRequestBody("application/pdf".toMediaTypeOrNull())
+
+                        val pdfPart = MultipartBody.Part.createFormData(
+                            "file", // ✅ MUST match backend
+                            file.name,
+                            requestFile
+                        )
+
+                        // ✅ Create DTO
+                        val voiceMap = selectedActors.mapIndexed { index, actorName ->
+                            // Example: assign roles dynamically or keep default roles
+                            val role = "actor$index" // Or get a role from your UI
+                            role to VoiceActorDTO(first = actorName, second = "Narrator")
+                        }.toMap()
+                        if (storyTitle.isBlank()) {
+                            Toast.makeText(context, "Fill story title", Toast.LENGTH_SHORT).show()
+                            return@launch
+                        }
+
+
+                        val request = StoryRequestDTO(
+                            title = storyTitle,
+                            description = description,
+                            voiceActors = voiceMap,
+                            genre = genre.uppercase(),
+                            isPrivate = !publish,
+                            hasSfx = sfx,
+                            hasBackgroundMusic = backgroundMusic,
+                            tags = selectedTags.toList(),
+                            minimumAge = minAge.toIntOrNull() ?: 0
+                        )
+
+                        val storyBody = createStoryRequestBody(request)
+
+
+                        try {
+                            val story = RetrofitClient.createApi(context).createStory(pdfPart, storyBody)
+
+                            Toast.makeText(context, "Upload Success ✅", Toast.LENGTH_SHORT).show()
+
+                            val gson = Gson()
+                            val storyJson = gson.toJson(story)
+
+                            val intent = Intent(context, StoryActivity::class.java).apply {
+                                putExtra("STORY_JSON", storyJson)
+                            }
+
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Upload failed ❌ ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            },
             colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -175,6 +297,7 @@ fun UploadScreen(
         }
     }
 }
+
 
 @Composable
 fun UploadPdfCard(
@@ -315,15 +438,18 @@ fun StoryInfoCard(
 @Composable
 fun VoiceActorCard(
     colors: ThemeColors,
-    actors: List<VoiceActor>,
-    selectedActor: String,
-    onActorSelected: (String) -> Unit,
-    onAddActorClick: () -> Unit
+    actors: List<VoiceActorRequest>,
+    selectedActors: Set<String>,
+    onActorSelected: (Set<String>) -> Unit,
+    onAddActorClick: () -> Unit,
+    loadNextPage: () -> Unit,
+    hasMoreActors: Boolean
 ) {
 
     Card(
         colors = CardDefaults.cardColors(containerColor = colors.card),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth()
     ) {
 
         Column(modifier = Modifier.padding(16.dp)) {
@@ -332,40 +458,76 @@ fun VoiceActorCard(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            actors.forEach { actor ->
+            if (actors.isEmpty()) {
+                Text("No voice actors available", color = colors.text)
+            } else {
+                // Scrollable list with LazyColumn and automatic load more
+                val listState = rememberLazyListState()
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 300.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    itemsIndexed(actors) { index, actor ->
 
-                    Column {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val newSet = if (selectedActors.contains(actor.actorName))
+                                        selectedActors - actor.actorName
+                                    else
+                                        selectedActors + actor.actorName
+                                    onActorSelected(newSet)
+                                }
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(actor.actorName, color = colors.text)
+                                Text(
+                                    "${actor.gender} • ${if (actor.adult) "Adult" else "Kid"}",
+                                    fontSize = 12.sp,
+                                    color = colors.text
+                                )
+                            }
 
-                        Text(actor.name, color = colors.text)
-
-                        Text(
-                            "${actor.gender} • ${actor.ageGroup}",
-                            fontSize = 12.sp,
-                            color = colors.text
-                        )
+                            Checkbox(
+                                checked = selectedActors.contains(actor.actorName),
+                                onCheckedChange = { checked ->
+                                    val newSet = if (checked)
+                                        selectedActors + actor.actorName
+                                    else
+                                        selectedActors - actor.actorName
+                                    onActorSelected(newSet)
+                                }
+                            )
+                        }
                     }
-
-                    RadioButton(
-                        selected = selectedActor == actor.name,
-                        onClick = { onActorSelected(actor.name) }
-                    )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                // Automatic load more when scrolling near the bottom
+                LaunchedEffect(listState) {
+                    snapshotFlow {
+                        val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                        lastVisible to actors.size
+                    }.collect { (lastVisible, total) ->
+                        if (hasMoreActors && lastVisible >= total - 3) {
+                            loadNextPage()
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
             Button(
                 onClick = onAddActorClick,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.accent
-                ),
+                colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("+ Add New Voice Actor", color = colors.buttonText)

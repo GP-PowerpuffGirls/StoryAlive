@@ -26,8 +26,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.storyalive.components.StoryAliveTopBar
+import com.example.storyalive.network.RetrofitClient
 import com.example.storyalive.ui.theme.StoryAliveTheme
 import com.example.storyalive.ui.theme.themeColors
+import com.example.storyalive.utils.uriToFile
+import com.google.gson.Gson
+import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 
 class VoiceActorActivity : ComponentActivity() {
@@ -38,7 +46,10 @@ class VoiceActorActivity : ComponentActivity() {
         setContent {
             StoryAliveTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Column {
+                    Column(
+                        modifier = Modifier
+                            .padding(innerPadding) // <-- apply scaffold padding
+                    ) {
                         StoryAliveTopBar(selectedPage = "Upload")
                         VoiceActorScreen()
                     }
@@ -54,9 +65,22 @@ fun VoiceActorScreen(
     isLightTheme: Boolean = true
 ) {
 
+    var emotion by remember { mutableStateOf("NARRATION") }
+    var emotions by remember { mutableStateOf(listOf<String>()) }
     val colors = themeColors(isLightTheme)
     val context = LocalContext.current
-
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(Unit) {
+        try {
+            val api = RetrofitClient.createApi(context)
+            val enums = api.getEnums()
+            // Assuming the API returns map with key "EMOTION" for emotions
+            emotions = enums["emotions"] ?: listOf("Neutral") // fallback
+        } catch (e: Exception) {
+            Toast.makeText(context, "Failed to load emotions: ${e.message}", Toast.LENGTH_LONG).show()
+            emotions = listOf("Neutral") // fallback
+        }
+    }
     var recorder: MediaRecorder? by remember { mutableStateOf(null) }
     var audioFilePath by remember { mutableStateOf<String?>(null) }
     var audioUri by remember { mutableStateOf<Uri?>(null) }
@@ -66,10 +90,10 @@ fun VoiceActorScreen(
     var gender by remember { mutableStateOf("Female") }
     var isAdult by remember { mutableStateOf(false) }
     var isPublic by remember { mutableStateOf(true) }
-    var emotion by remember { mutableStateOf("Neutral") }
+
     var intensity by remember { mutableStateOf(2) }
 
-    val emotions = listOf("Neutral", "Happy", "Sad", "Angry", "Excited")
+
 
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
@@ -269,7 +293,71 @@ fun VoiceActorScreen(
             }
 
             Button(
-                onClick = { },
+                onClick = {
+
+                    // ✅ 1. Validate input
+                    if (name.isBlank()) {
+                        Toast.makeText(context, "Enter name", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+
+                    if (audioFilePath == null && audioUri == null) {
+                        Toast.makeText(context, "Record or upload audio", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+
+                    scope.launch {
+                        try {
+
+                            // ✅ 2. Get audio file
+                            val file = when {
+                                audioFilePath != null -> File(audioFilePath!!)
+                                audioUri != null -> uriToFile(context, audioUri!!)
+                                else -> return@launch
+                            }
+
+                            // ✅ 3. Convert audio to Multipart
+                            val audioPart = MultipartBody.Part.createFormData(
+                                "files",
+                                file.name,
+                                file.asRequestBody("audio/*".toMediaTypeOrNull())
+                            )
+
+                            // ✅ 4. Create JSON request
+                            val requestMap = mapOf(
+                                "actorName" to name,
+                                "gender" to gender.uppercase(),
+                                "isAdult" to isAdult,
+                                "isPrivate" to !isPublic,
+                                "preferredRole" to "NONE",
+                                "audios" to listOf(
+                                    mapOf(
+                                        "emotion" to emotion.uppercase(),
+                                        "intensity" to intensity.toString(),
+                                        "filepath" to ""
+                                    )
+                                )
+                            )
+
+                            val json = Gson().toJson(requestMap)
+
+                            val requestBody = json.toRequestBody("application/json".toMediaTypeOrNull())
+
+                            // ✅ 5. Call API
+                            RetrofitClient.createApi(context)
+                                .createVoiceActor(requestBody, listOf(audioPart))
+
+                            // ✅ 6. Success
+                            Toast.makeText(context, "Actor created ✅", Toast.LENGTH_SHORT).show()
+
+                            context.startActivity(Intent(context, UploadActivity::class.java))
+
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Error ❌ ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
+
+                },
                 modifier = Modifier.weight(1f)
             ) {
                 Text("Create Voice Actor")
