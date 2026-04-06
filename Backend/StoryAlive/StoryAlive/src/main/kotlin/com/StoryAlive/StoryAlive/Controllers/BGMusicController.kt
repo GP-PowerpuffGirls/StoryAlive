@@ -15,4 +15,9 @@ class BGMusicController(private val bgMusicService: BGMusicService) {
     fun uploadBGMusic(@RequestBody bgMusic: BGMusicDto):BackgroundMusic {
         return bgMusicService.uploadBGMusic(bgMusic)
     }
+
+    @PostMapping("/list")
+    fun uploadBGMusicList(@RequestBody bgMusic: List<BGMusicDto>):List<BGMusicDto>  {
+        return bgMusicService.uploadBGMusicList(bgMusic)
+    }
 }
