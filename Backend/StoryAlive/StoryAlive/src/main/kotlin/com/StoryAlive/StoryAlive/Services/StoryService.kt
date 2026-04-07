@@ -70,7 +70,6 @@ class StoryService(private val storyRepo: StoryRepo,
 
     fun createStory(storyRequest: StoryRequestDTO, pdf: MultipartFile): Story {
         val user = userService.getUser()
-            .orElseThrow { RuntimeException("User not found") }
         println("starting LLM task!")
         val jsonString = llmService.generateStoryFromPdf(pdf.bytes)
         println("LLM task finished")

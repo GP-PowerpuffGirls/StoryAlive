@@ -63,12 +63,12 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo, val supabaseStorageS
         if (files.size != request.audios.size)
             throw IllegalArgumentException("Files count must match audio metadata count")
 
-        val user = userService.getUser().orElseThrow { RuntimeException("User not found") }
+        val user = userService.getUser()
         val actorName = request.actorName.trim().lowercase()
         val newActorId = ObjectId()
 
         val existingActor = if (request.isPrivate) {
-            voiceActorRepo.findByUserIdAndActorNameAndIsPrivateTrue(user!!.userId, actorName)
+            voiceActorRepo.findByUserIdAndActorNameAndIsPrivateTrue(user.userId, actorName)
         } else {
             voiceActorRepo.findByActorNameAndIsPrivateFalse(actorName)
         }
@@ -86,7 +86,7 @@ class VoiceActorService(val voiceActorRepo: VoiceActorRepo, val supabaseStorageS
             voiceActorRepo.save(
                 VoiceActor(
                     voiceActorId = newActorId,
-                    userId = if (request.isPrivate) user!!.userId else null,
+                    userId = if (request.isPrivate) user.userId else null,
                     actorName = actorName,
                     gender = request.gender,
                     isAdult = request.isAdult,
