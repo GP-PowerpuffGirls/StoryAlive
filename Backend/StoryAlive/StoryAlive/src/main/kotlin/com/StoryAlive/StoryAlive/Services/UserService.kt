@@ -82,7 +82,7 @@ class UserService ( private val userRepo: UserRepo, private val hashEncoder : Ha
             age = updatedData.age?: user.get().age
         )
     }
-    fun getUser(): Optional<User?> {
+    fun getUser(): Optional<User> {
         return userRepo.findById(getCurrentUser().getUserId())
     }
 
