@@ -43,7 +43,6 @@ class AuthService (
                     email = user.email,
                     password = hashedPassword,
                     age = user.age,
-
                     favouriteStories = emptyList(),
                     favouriteVoiceActors = emptyList(),
                     totalPublishedStoriesCount = 0,
