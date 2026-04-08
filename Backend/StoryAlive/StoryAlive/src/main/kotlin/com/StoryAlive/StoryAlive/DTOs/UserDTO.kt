@@ -9,11 +9,10 @@ data class UserDTO(
     val lastName: String,
     val email: String,
     val accountCreationDate: Instant = Instant.now(),
-
+    val age: Int,
     val favouriteVoiceActors: List<ObjectId>? = emptyList(),
-
-    val totalPublishedStoriesCount: Any = 0,
-    val totalVoiceActorsCount: Any = 0,
-    val totalStoriesCount: Any = 0,
+    val totalPublishedStoriesCount: Int = 0,
+    val totalVoiceActorsCount: Int = 0,
+    val totalStoriesCount: Int = 0,
 
     )

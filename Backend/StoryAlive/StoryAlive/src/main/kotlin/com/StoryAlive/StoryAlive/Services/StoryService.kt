@@ -5,7 +5,6 @@ import com.StoryAlive.StoryAlive.DTOs.Story.StoryCreationDTO
 import com.StoryAlive.StoryAlive.DTOs.Story.StoryRequestDTO
 import com.StoryAlive.StoryAlive.DTOs.Key.CastKey
 import com.StoryAlive.StoryAlive.DTOs.Key.VoiceActorKey
-import com.StoryAlive.StoryAlive.DTOs.StoryResponseDTO
 import com.StoryAlive.StoryAlive.Enums.BGMusicEmotion
 import com.StoryAlive.StoryAlive.Enums.Emotion
 import com.StoryAlive.StoryAlive.Enums.Genre
@@ -17,7 +16,6 @@ import com.StoryAlive.StoryAlive.Models.BackgroundMusic
 import com.StoryAlive.StoryAlive.Models.Location
 import com.StoryAlive.StoryAlive.Models.VoiceActor
 import com.StoryAlive.StoryAlive.Repositories.StoryRepo
-import com.StoryAlive.StoryAlive.mapper.toResponse
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.bson.types.ObjectId
 import org.springframework.data.domain.Page
@@ -25,7 +23,6 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
-import java.util.Optional
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.forEach
@@ -50,8 +47,8 @@ class StoryService(private val storyRepo: StoryRepo,
 
     fun getAllFavouriteStories(pageNumber: Int, pageSize: Int): Page<Story>{
         val pageable: Pageable = PageRequest.of(pageNumber, pageSize)
-        val favouriteStoriesIds = userService.getUserFavouriteStories();
-        return storyRepo.findByStoryIdIn(favouriteStoriesIds, pageable);
+        val favouriteStoriesIds = userService.getUserFavouriteStories()
+        return storyRepo.findByStoryIdIn(favouriteStoriesIds, pageable)
     }
 
     fun getAllPrivateStories(pageNumber: Int, pageSize: Int): Page<Story> {
@@ -61,18 +58,18 @@ class StoryService(private val storyRepo: StoryRepo,
     }
 
     fun getStoryById(id: ObjectId) : Story {
-        userService.addStoryToHistory(id);
+        userService.addStoryToHistory(id)
         return storyRepo.findById(id).get()
     }
 
     fun getHistory(pageNumber: Int, pageSize: Int) : Page<Story> {
         val pageable: Pageable = PageRequest.of(pageNumber, pageSize)
         val historyIds = userService.getHistoryStories()
-        return storyRepo.findByStoryIdIn(historyIds, pageable);
+        return storyRepo.findByStoryIdIn(historyIds, pageable)
     }
 
     fun createStory(storyRequest: StoryRequestDTO, pdf: MultipartFile): Story {
-        val userId = userService.getCurrentUser().getUserId()
+        val user = userService.getUser()
         println("starting LLM task!")
         val jsonString = llmService.generateStoryFromPdf(pdf.bytes)
         println("LLM task finished")
@@ -100,14 +97,17 @@ class StoryService(private val storyRepo: StoryRepo,
 
         println("saving to cloud")
         val updatedJson = mapper.writeValueAsString(storyDto)
-        val jsonPath = supabaseStorageService.saveJsonToCloud(updatedJson, userId)
-        val pdfPath = supabaseStorageService.savePdfToCloud(pdf, userId)
+        val jsonPath = supabaseStorageService.saveJsonToCloud(updatedJson, user!!.userId)
+        val pdfPath = supabaseStorageService.savePdfToCloud(pdf, user!!.userId )
         println("done")
 
         currentStory.duration = ttsResponse.duration
         currentStory.finalAudioPath = ttsResponse.audioPath
         currentStory.pdfPath = pdfPath
         currentStory.jsonPath = jsonPath
+        user.totalStoriesCount+=1
+        user.totalPublishedStoriesCount+=1
+        userService.saveUser(user)
         return storyRepo.save(currentStory)
     }
 
