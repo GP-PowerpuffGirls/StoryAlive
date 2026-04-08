@@ -103,7 +103,7 @@ fun StoryDetailScreen(
     var playbackPosition by remember { mutableFloatStateOf(0.15f) }
     var volume by remember { mutableFloatStateOf(0.8f) }
     val context = LocalContext.current
-
+    var isReady by remember { mutableStateOf(false) }
     var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
     var isPlaying by remember { mutableStateOf(false) }
     var currentPosition by remember { mutableFloatStateOf(0f) }
@@ -130,7 +130,7 @@ fun StoryDetailScreen(
                 prepareAsync()
 
                 setOnPreparedListener {
-                    // ready to play
+                    isReady=true
                 }
 
                 setOnCompletionListener {
@@ -198,14 +198,12 @@ fun StoryDetailScreen(
                         // PROGRESS BAR
 
                         Slider(
-                            value = if (mediaPlayer != null && mediaPlayer!!.duration > 0) {
+                            value = if (mediaPlayer != null && isReady) {
                                 currentPosition / mediaPlayer!!.duration
                             } else 0f,
                             onValueChange = {
-                                mediaPlayer?.let { player ->
-                                    val newPosition = (it * player.duration).toInt()
-                                    player.seekTo(newPosition)
-                                }
+                                if(!isReady) return@Slider
+                                mediaPlayer?.seekTo((it * mediaPlayer!!.duration).toInt())
                             },
                             colors = SliderDefaults.colors(
                                 // We make both tracks the same light color to match the image
@@ -261,6 +259,7 @@ fun StoryDetailScreen(
                                     .background(colors.accent, CircleShape)
                                     .clickable {
                                         mediaPlayer?.let { player ->
+                                            if(!isReady) return@clickable
                                             if (player.isPlaying) {
                                                 player.pause()
                                                 isPlaying = false
