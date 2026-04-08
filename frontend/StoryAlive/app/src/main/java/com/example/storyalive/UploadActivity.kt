@@ -48,6 +48,7 @@ import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class UploadActivity : ComponentActivity() {
 
@@ -265,11 +266,13 @@ fun UploadScreen(
                             minimumAge = minAge.toIntOrNull() ?: 0
                         )
 
-                        val storyBody = createStoryRequestBody(request)
+                        val json = Gson().toJson(request)
+                        val storyRequestBody = json.toRequestBody("application/json".toMediaTypeOrNull())
+
 
 
                         try {
-                            val story = RetrofitClient.createApi(context).createStory(pdfPart, storyBody)
+                            val story = RetrofitClient.createApi(context).createStory(pdfPart, storyRequestBody)
 
                             Toast.makeText(context, "Upload Success ✅", Toast.LENGTH_SHORT).show()
 

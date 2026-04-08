@@ -41,7 +41,7 @@ interface ApiService {
     @POST("/stories/create-story")
     suspend fun createStory(
         @Part file: MultipartBody.Part,
-        @Part storyRequestDTO: MultipartBody.Part
+        @Part("storyRequestDTO") storyRequestDTO: RequestBody
     ):  StoryResponseDTO
 
     @GET("/voice-actors")
