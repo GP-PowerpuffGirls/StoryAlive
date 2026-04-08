@@ -1,6 +1,5 @@
 package com.example.storyalive
 
-import Story
 import android.media.MediaPlayer
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -55,17 +54,20 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.storyalive.components.StoryAliveTopBar
+import com.example.storyalive.model.StoryRequestDTO
+import com.example.storyalive.model.StoryResponseDTO
 import com.example.storyalive.ui.theme.StoryAliveTheme
 import com.example.storyalive.ui.theme.themeColors
 import com.google.gson.Gson
+import androidx.compose.material.icons.outlined.Pause
 
 class StoryActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         val storyJson = intent.getStringExtra("STORY_JSON")
-
-        val story = Gson().fromJson(storyJson, Story::class.java)
+        requireNotNull(storyJson)
+        val story = Gson().fromJson(storyJson, StoryResponseDTO::class.java)
 
         enableEdgeToEdge()
         setContent {
@@ -91,7 +93,7 @@ class StoryActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StoryDetailScreen(
-    story: Story,
+    story: StoryResponseDTO,
     isLightTheme: Boolean = true
 ) {
 
@@ -104,14 +106,26 @@ fun StoryDetailScreen(
 
     var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
     var isPlaying by remember { mutableStateOf(false) }
+    var currentPosition by remember { mutableFloatStateOf(0f) }
     DisposableEffect(Unit) {
         onDispose {
             mediaPlayer?.release()
         }
     }
+    LaunchedEffect(mediaPlayer) {
+        while (true) {
+            mediaPlayer?.let {
+                if (it.isPlaying) {
+                    currentPosition = it.currentPosition.toFloat()
+                }
+            }
+            kotlinx.coroutines.delay(500)
+        }
+    }
     LaunchedEffect(Unit) {
         try {
             mediaPlayer = MediaPlayer().apply {
+                setAudioStreamType(android.media.AudioManager.STREAM_MUSIC)
                 setDataSource(story.finalAudioPath) // 🔥 your backend audio
                 prepareAsync()
 
@@ -150,8 +164,14 @@ fun StoryDetailScreen(
                     color = colors.heading
                 )
                 val formattedDate = remember {
-                    java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
-                        .format(java.util.Date.from(story.createdAt))
+                    try {
+                        val instant = java.time.Instant.parse(story.createdAt)
+                        val date = java.util.Date.from(instant)
+                        java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
+                            .format(date)
+                    } catch (e: Exception) {
+                        "Unknown date"
+                    }
                 }
 
                 Text(
@@ -179,7 +199,7 @@ fun StoryDetailScreen(
 
                         Slider(
                             value = if (mediaPlayer != null && mediaPlayer!!.duration > 0) {
-                                mediaPlayer!!.currentPosition.toFloat() / mediaPlayer!!.duration
+                                currentPosition / mediaPlayer!!.duration
                             } else 0f,
                             onValueChange = {
                                 mediaPlayer?.let { player ->
@@ -211,7 +231,7 @@ fun StoryDetailScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("0:00", fontSize = 12.sp, color = colors.muted)
+                            Text(formatDuration((currentPosition /1000).toDouble()), fontSize = 12.sp, color = colors.muted)
                             Text(formatDuration(story.duration), fontSize = 12.sp, color = colors.muted)
                         }
 
@@ -253,7 +273,10 @@ fun StoryDetailScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.PlayArrow,
+                                    imageVector = if (isPlaying)
+                                        Icons.Outlined.Pause
+                                    else
+                                        Icons.Outlined.PlayArrow,
                                     contentDescription = null,
                                     tint = Color.White,
                                     modifier = Modifier.size(36.dp)
@@ -380,7 +403,7 @@ fun StoryDetailScreen(
                                 }
                             )
                             Text(
-                                text = "100%",
+                                text = "${(volume * 100).toInt()}%",
                                 fontSize = 12.sp,
                                 color = colors.muted
                             )
@@ -428,46 +451,40 @@ fun formatDuration(seconds: Double): String {
     val secs = (seconds % 60).toInt()
     return "%d:%02d".format(mins, secs)
 }
-@Preview(showBackground = true, name = "Light Mode - Story Detail")
-@Composable
-fun StoryDetailPreviewLight() {
-    val fakeStory = Story(
-        title = "The Adventure Begins",
-        description = "This is a sample story for preview.",
-        createdAt = java.util.Date().toInstant(),
-        duration = 120.0,
-        finalAudioPath = "" // can be empty for preview
-    )
-
-    StoryAliveTheme(darkTheme = false) {
-        Column {
-            StoryAliveTopBar(selectedPage = "Published")
-            StoryDetailScreen(
-                story = fakeStory,
-                isLightTheme = true
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, name = "Dark Mode - Story Detail")
-@Composable
-fun StoryDetailPreviewDark() {
-    val fakeStory = Story(
-        title = "The Adventure Begins",
-        description = "This is a sample story for preview.",
-        createdAt = java.util.Date().toInstant(),
-        duration = 120.0,
-        finalAudioPath = ""
-    )
-
-    StoryAliveTheme(darkTheme = true) {
-        Column {
-            StoryAliveTopBar(selectedPage = "Published")
-            StoryDetailScreen(
-                story = fakeStory,
-                isLightTheme = false
-            )
-        }
-    }
-}
+//@Preview(showBackground = true, name = "Light Mode - Story Detail")
+//@Composable
+//fun StoryDetailPreviewLight() {
+//
+//
+//    StoryAliveTheme(darkTheme = false) {
+//        Column {
+//            StoryAliveTopBar(selectedPage = "Published")
+//            StoryDetailScreen(
+//                story = fakeStory,
+//                isLightTheme = true
+//            )
+//        }
+//    }
+//}
+//
+//@Preview(showBackground = true, name = "Dark Mode - Story Detail")
+//@Composable
+//fun StoryDetailPreviewDark() {
+//    val fakeStory = Story(
+//        title = "The Adventure Begins",
+//        description = "This is a sample story for preview.",
+//        createdAt = java.util.Date().toInstant(),
+//        duration = 120.0,
+//        finalAudioPath = ""
+//    )
+//
+//    StoryAliveTheme(darkTheme = true) {
+//        Column {
+//            StoryAliveTopBar(selectedPage = "Published")
+//            StoryDetailScreen(
+//                story = fakeStory,
+//                isLightTheme = false
+//            )
+//        }
+//    }
+//}

@@ -42,7 +42,7 @@ interface ApiService {
     suspend fun createStory(
         @Part file: MultipartBody.Part,
         @Part storyRequestDTO: MultipartBody.Part
-    ): Story
+    ):  StoryResponseDTO
 
     @GET("/voice-actors")
     suspend fun getVoiceActors(
