@@ -181,8 +181,8 @@ fun LoginScreen(
                                     println("Refresh Token: ${tokens?.refreshToken}")
 
                                     context.getSharedPreferences("app_prefs", MODE_PRIVATE).edit()
-                                        .putString("access_token", tokens?.accessToken)
-                                        .putString("refresh_token", tokens?.refreshToken)
+                                        .putString("access_token", tokens?.accessToken?.trim()?.replace("\\s".toRegex(), "") ?: "")
+                                        .putString("refresh_token", tokens?.refreshToken?.trim()?.replace("\\s".toRegex(), "") ?: "")
                                         .apply()
 
                                     context.startActivity(Intent(context, UploadActivity::class.java))

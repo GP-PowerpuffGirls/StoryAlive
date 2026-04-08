@@ -7,6 +7,7 @@ import com.example.storyalive.model.PagedResponses
 import com.example.storyalive.model.StoryRequestDTO
 import com.example.storyalive.model.StoryResponseDTO
 import com.example.storyalive.model.UserLoginRequest
+import com.example.storyalive.model.UserResponse
 import com.example.storyalive.model.UserSignupRequest
 import com.example.storyalive.model.VoiceActorRequest
 import okhttp3.MultipartBody
@@ -14,8 +15,10 @@ import okhttp3.RequestBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.Multipart
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Query
 
@@ -31,6 +34,9 @@ interface ApiService {
         @Body request: UserLoginRequest
     ): Response<AuthResponse>
 
+    @POST("auth/logout")
+    suspend fun logout(@Header("Authorization") refreshToken: String): Response<String>
+
     @Multipart
     @POST("/stories/create-story")
     suspend fun createStory(
@@ -42,6 +48,18 @@ interface ApiService {
     suspend fun getVoiceActors(
         @Query("pageNumber") pageNumber: Int = 0,
         @Query("pageSize") pageSize: Int = 10
+    ): Response<PagedResponse<VoiceActorRequest>>
+
+    @GET("voice-actors/private")
+    suspend fun getPrivateVoiceActors(
+        @Query("pageNumber") page: Int,
+        @Query("pageSize") size: Int
+    ): Response<PagedResponse<VoiceActorRequest>>
+
+    @GET("voice-actors/all-user-available")
+    suspend fun getUserAvailableVoiceActors(
+        @Query("pageNumber") page: Int,
+        @Query("pageSize") size: Int
     ): Response<PagedResponse<VoiceActorRequest>>
     @Multipart
     @POST("/voice-actors")
@@ -76,4 +94,17 @@ interface ApiService {
         @Query("pageNumber") pageNumber: Int = 0,
         @Query("pageSize") pageSize: Int = 10
     ): Response<PagedResponses<StoryResponseDTO>>
+
+    @GET("/user")
+    suspend fun getUser(): UserResponse
+
+    @PUT("user/edit")
+    suspend fun editUser(
+        @Query("firstName") firstName: String,
+        @Query("lastName") lastName: String,
+        @Query("email") email: String,
+        @Query("age") age: Int,
+        @Query("currentPassword") currentPassword: String,
+        @Query("newPassword") newPassword: String
+    ): Response<UserResponse>
 }

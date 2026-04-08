@@ -115,11 +115,11 @@ fun UploadScreen(
         isLoadingActors=true
         scope.launch {
             try {
-                val response = RetrofitClient.createApi(context).getVoiceActors(page, pageSize)
+                val response = RetrofitClient.createApi(context).getUserAvailableVoiceActors(page, pageSize)
                 if(response.isSuccessful){
                     val body =response.body()
                     val newActors = body?.content?:emptyList()
-                    actors = actors + newActors
+                    actors = (actors + newActors).sortedWith(compareByDescending<VoiceActorRequest> { it.private }.thenBy { it.actorName })
                     hasMoreActors = page < (body?.totalPages ?: 1) - 1
                 }
             }catch (e: Exception) {
@@ -494,6 +494,22 @@ fun VoiceActorCard(
                                     fontSize = 12.sp,
                                     color = colors.text
                                 )
+                                if (actor.private) {
+                                    Surface(
+                                        color = colors.accent,
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Text(
+                                            "PRIVATE",
+                                            fontSize = 10.sp,
+                                            modifier = Modifier.padding(
+                                                horizontal = 6.dp,
+                                                vertical = 2.dp
+                                            ),
+                                            color = colors.buttonText
+                                        )
+                                    }
+                                }
                             }
 
                             Checkbox(

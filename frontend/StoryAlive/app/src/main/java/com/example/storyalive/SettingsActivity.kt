@@ -1,6 +1,8 @@
 package com.example.storyalive
 
+import android.content.Context
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -29,11 +31,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.storyalive.components.StoryAliveTopBar
+import com.example.storyalive.network.RetrofitClient
 import com.example.storyalive.ui.theme.themeColors
+import kotlinx.coroutines.launch
 
 class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,6 +75,9 @@ class SettingsActivity : ComponentActivity() {
 @Composable
 fun SettingsScreen(isLightTheme: Boolean = true, onThemeChange: (Boolean) -> Unit) {
     val colors = themeColors(isLightTheme)
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
 
     // --- State Management ---
     var pushNotifications by remember { mutableStateOf(false) }
@@ -99,38 +107,6 @@ fun SettingsScreen(isLightTheme: Boolean = true, onThemeChange: (Boolean) -> Uni
                 color = colors.heading,
                 modifier = Modifier.padding(vertical = 16.dp)
             )
-        }
-
-        // --- 1. Edit Profile ---
-        item {
-            SettingsCard(colors) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(
-                            "Edit Profile",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.heading
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        ProfileInfoRow("Name:", "Alex Johnson", colors)
-                        ProfileInfoRow("Email:", "alex.johnson@example.com", colors)
-                        ProfileInfoRow("Age:", "28", colors)
-                    }
-                    Button(
-                        onClick = { },
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
-                        modifier = Modifier.height(36.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp)
-                    ) {
-                        Text("Edit", color = Color.White, fontSize = 14.sp)
-                    }
-                }
-            }
         }
 
         // --- 2. Appearance ---
@@ -332,7 +308,32 @@ fun SettingsScreen(isLightTheme: Boolean = true, onThemeChange: (Boolean) -> Uni
         // --- 7. Sign Out Button ---
         item {
             Button(
-                onClick = { /* Handle sign out logic here */ },
+                onClick = {
+                    scope.launch {
+                        try {
+                            val api = RetrofitClient.createApi(context)
+                            val refreshToken = RetrofitClient.getRefreshToken(context).replace("\\s".toRegex(), "")
+                            val response = api.logout("Bearer $refreshToken")
+                            if (response.isSuccessful) {
+                                // Clear local session / token
+                                val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+                                prefs.edit().clear().apply()
+
+                                // Navigate to login screen
+                                val intent = android.content.Intent(context, LoginActivity::class.java)
+                                intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                                        android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                context.startActivity(intent)
+
+                            } else {
+                                Toast.makeText(context, "Sign out failed", Toast.LENGTH_SHORT).show()
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            Toast.makeText(context, "Error signing out", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
                 modifier = Modifier
                     .fillMaxWidth()

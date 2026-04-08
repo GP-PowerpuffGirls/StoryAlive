@@ -10,17 +10,28 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.storyalive.components.StoryAliveTopBar
+import com.example.storyalive.model.UserResponse
+import com.example.storyalive.model.VoiceActorRequest
+import com.example.storyalive.network.RetrofitClient
 import com.example.storyalive.ui.theme.StoryAliveTheme
 import com.example.storyalive.ui.theme.ThemeColors
 import com.example.storyalive.ui.theme.themeColors
+import kotlinx.coroutines.launch
 
 class ProfileActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,7 +42,9 @@ class ProfileActivity : ComponentActivity() {
             StoryAliveTheme {
                 StoryAliveTheme {
                     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                        Column {
+                        Column(
+                            modifier = Modifier.padding(innerPadding)
+                        ) {
                             StoryAliveTopBar(selectedPage = "Profile")
                             ProfileScreen()
                         }
@@ -46,18 +59,72 @@ class ProfileActivity : ComponentActivity() {
 fun ProfileScreen(isLightTheme: Boolean = true) {
 
     val colors = themeColors(isLightTheme)
+    var privateActors by remember { mutableStateOf<List<VoiceActorRequest>>(emptyList()) }
+    val context = LocalContext.current
+    var user by remember { mutableStateOf<UserResponse?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    var showEdit by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
-    val profile = remember {
-        mapOf(
-            "name" to "Mariam Tamer",
-            "email" to "Mariam.Tamer@example.com",
-            "joinDate" to "2025-12-01",
-            "totalStories" to 5,
-            "publishedStories" to 1,
-            "totalListens" to 234,
-            "totalVoiceActors" to 3,
-            "favoriteVoiceActors" to listOf("Sarah Mitchell", "James Cooper")
+    LaunchedEffect(Unit) {
+        try {
+            val api = RetrofitClient.createApi(context)
+
+            user = api.getUser()
+
+            val response = api.getPrivateVoiceActors(0, 10)
+
+            if (response.isSuccessful) {
+                val body = response.body()
+                privateActors = body?.content ?: emptyList()
+            } else {
+                privateActors = emptyList()
+            }
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            isLoading = false
+        }
+    }
+    if (isLoading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+    if (showEdit && user != null) {
+        EditProfileScreen(
+            user = user!!,
+            onCancel = { showEdit = false },
+            onSave = { updatedUser, currentPassword, newPassword ->
+                // Call API
+                scope.launch{
+                    try {
+                        val response = RetrofitClient.createApi(context).editUser(
+                            updatedUser.firstName,
+                            updatedUser.lastName,
+                            updatedUser.email,
+                            updatedUser.age,
+                            currentPassword,
+                            newPassword
+                        )
+                        if (response.isSuccessful) {
+                            user = response.body()
+                            showEdit = false
+                        } else {
+                            // handle error
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
         )
+        return
     }
 
     LazyColumn(
@@ -77,7 +144,6 @@ fun ProfileScreen(isLightTheme: Boolean = true) {
             )
         }
 
-        // Profile Info
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = colors.card),
@@ -87,27 +153,21 @@ fun ProfileScreen(isLightTheme: Boolean = true) {
                 Column(modifier = Modifier.padding(16.dp)) {
 
                     Text(
-                        profile["name"] as String,
+                        "${user?.firstName} ${user?.lastName}",
                         fontWeight = FontWeight.Bold,
                         color = colors.heading,
                         fontSize = 20.sp
                     )
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    Spacer(modifier = Modifier.height(4.dp))
-
+                        ProfileInfoRow("Email:", user?.email ?: "", colors)
+                        ProfileInfoRow("Age:", user?.age?.toString() ?: "", colors)
                     Text(
-                        profile["email"] as String,
+                        "Member since ${user?.accountCreationDate?.substring(0, 10)}",
                         color = colors.muted,
                         fontSize = 14.sp
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        "Member since ${profile["joinDate"]}",
-                        color = colors.muted,
-                        fontSize = 14.sp
-                    )
                 }
             }
         }
@@ -136,19 +196,15 @@ fun ProfileScreen(isLightTheme: Boolean = true) {
                         modifier = Modifier.fillMaxWidth()
                     ) {
 
-                        StatItem("Total Stories", profile["totalStories"] as Int, colors)
-
-                        StatItem("Published", profile["publishedStories"] as Int, colors)
-
-                        StatItem("Total Listens", profile["totalListens"] as Int, colors)
-
-                        StatItem("Voice Actors", profile["totalVoiceActors"] as Int, colors)
+                        StatItem("Total Stories", user?.totalStoriesCount ?: 0, colors)
+                        StatItem("Published", user?.totalPublishedStoriesCount ?: 0, colors)
+                        StatItem("Voice Actors", user?.totalVoiceActorsCount ?: 0, colors)
                     }
                 }
             }
         }
 
-        // Favorite Voice Actors
+        // Your Private Voice Actors
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = colors.card),
@@ -159,7 +215,7 @@ fun ProfileScreen(isLightTheme: Boolean = true) {
                 Column(modifier = Modifier.padding(16.dp)) {
 
                     Text(
-                        "Favorite Voice Actors",
+                        "Your Private Voice Actors",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = colors.heading
@@ -167,20 +223,33 @@ fun ProfileScreen(isLightTheme: Boolean = true) {
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    (profile["favoriteVoiceActors"] as List<String>).forEach { actor ->
+                    if (privateActors.isEmpty()) {
+                        Text("No private voice actors yet", color = colors.text)
+                    } else {
+                        privateActors.forEach { actor ->
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = colors.background),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
 
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = colors.background),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                        ) {
-                            Text(
-                                actor,
-                                color = colors.text,
-                                modifier = Modifier.padding(12.dp)
-                            )
+                                    Text(
+                                        actor.actorName,
+                                        color = colors.text,
+                                        fontWeight = FontWeight.Bold
+                                    )
+
+                                    Text(
+                                        "${actor.gender} • ${if (actor.adult) "Adult" else "Kid"}",
+                                        fontSize = 12.sp,
+                                        color = colors.text
+                                    )
+
+                                }
+                            }
                         }
                     }
                 }
@@ -207,9 +276,7 @@ fun ProfileScreen(isLightTheme: Boolean = true) {
                         color = colors.heading
                     )
 
-                    AccountButton("Edit Profile", colors)
-
-                    AccountButton("Change Password", colors)
+                    AccountButton("Edit Profile", colors){showEdit = true}
                 }
             }
         }
@@ -237,10 +304,10 @@ fun StatItem(title: String, value: Int, colors: ThemeColors) {
 }
 
 @Composable
-fun AccountButton(title: String, colors: ThemeColors) {
+fun AccountButton(title: String, colors: ThemeColors,onClick: () -> Unit) {
 
     Button(
-        onClick = {},
+        onClick = onClick,
         colors = ButtonDefaults.buttonColors(
             containerColor = colors.background
         ),
