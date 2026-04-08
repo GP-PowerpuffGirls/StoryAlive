@@ -1,8 +1,8 @@
 package com.example.storyalive.model
 
 data class StoryResponseDTO(
-    var storyId: String,
-    var creatorId: String,
+    var storyId: IdObject,
+    var creatorId: IdObject,
     var voiceActors: Map<String, VoiceActorPair>,
     var title: String,
     var description: String,
@@ -19,6 +19,10 @@ data class StoryResponseDTO(
     var modifiedAt: String,
     var minimumAge: Int,
     var numberOfViews: Int
+)
+data class IdObject(
+    val date: String,
+    val timestamp: Long
 )
 
 data class VoiceActorPair(

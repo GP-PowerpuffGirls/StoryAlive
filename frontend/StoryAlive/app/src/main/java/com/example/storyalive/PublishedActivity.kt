@@ -1,6 +1,8 @@
 package com.example.storyalive
 
+import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -37,6 +39,7 @@ import com.example.storyalive.network.RetrofitClient
 import com.example.storyalive.ui.theme.StoryAliveTheme
 import com.example.storyalive.ui.theme.ThemeColors
 import com.example.storyalive.ui.theme.themeColors
+import com.google.gson.Gson
 
 class PublishedActivity : ComponentActivity() {
 
@@ -140,6 +143,7 @@ fun PublishedScreen(isLightTheme: Boolean) {
         loadStoriesFromApi(0)
     }
 
+
     // Infinite scroll
     LaunchedEffect(gridState) {
         snapshotFlow { gridState.firstVisibleItemIndex }
@@ -194,7 +198,16 @@ fun PublishedScreen(isLightTheme: Boolean) {
                         story = story,
                         colors = colors,
                         onEdit = { editingStory = story },
-                        onDelete = { stories = stories.filter { it.storyId != story.storyId } }
+                        onDelete ={ stories = stories.filter { s -> s.storyId.timestamp != story.storyId.timestamp } },
+                        onPlay = {
+                            val storyJson = Gson().toJson(story)
+
+                            val intent = Intent(context, StoryActivity::class.java).apply {
+                                putExtra("STORY_JSON", storyJson)
+                            }
+
+                            context.startActivity(intent)
+                        }
                     )
                 }
 
@@ -246,7 +259,8 @@ fun PublishedStoryCard(
     story: StoryResponseDTO,
     colors: ThemeColors,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onPlay: () -> Unit
 ) {
     val durationText = remember(story.duration) {
         val minutes = story.duration.toInt()
@@ -256,7 +270,8 @@ fun PublishedStoryCard(
 
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = colors.card)
+        colors = CardDefaults.cardColors(containerColor = colors.card),
+        modifier = Modifier.fillMaxWidth().clickable{onPlay()}
     ) {
 
         Column {
@@ -394,7 +409,7 @@ fun PublishedStoryCard(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Button(
-                    onClick = { },
+                    onClick = { onPlay()},
                     modifier = Modifier.fillMaxWidth()
                 ) {
 
