@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -86,7 +87,6 @@ fun PublishedScreen(isLightTheme: Boolean) {
 
     var currentPage by remember { mutableStateOf(0) }
     var totalPages by remember { mutableStateOf(1) }
-
     val gridState = rememberLazyGridState()
 
     // Load enums once
@@ -99,9 +99,10 @@ fun PublishedScreen(isLightTheme: Boolean) {
             e.printStackTrace()
         }
     }
-    fun formatDuration(duration: Double): String {
-        val minutes = duration.toInt()
-        val seconds = ((duration - minutes) * 60).toInt()
+    fun formatDuration(durationInHours: Double): String {
+        val totalSeconds = (durationInHours * 3600).toInt() // convert hours to seconds
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
         return "%02d:%02d".format(minutes, seconds)
     }
 
@@ -256,191 +257,139 @@ fun PublishedScreen(isLightTheme: Boolean) {
 
 @Composable
 fun PublishedStoryCard(
-    story: StoryResponseDTO,
     colors: ThemeColors,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
-    onPlay: () -> Unit
+    story: StoryResponseDTO,
+    onPlay: () -> Unit,
+    onEdit: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null
 ) {
     val durationText = remember(story.duration) {
-        val minutes = story.duration.toInt()
-        val seconds = ((story.duration - minutes) * 60).toInt()
-        "%02d:%02d".format(minutes, seconds)
+       formatDuration(story.duration)
     }
 
     Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight()
+            .clickable { onPlay() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = colors.card),
-        modifier = Modifier.fillMaxWidth().clickable{onPlay()}
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
 
-        Column {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-            ) {
-
-                Surface(
-                    color = Color.Black.copy(.7f),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(10.dp)
-                ) {
-
-                    Text(
-                        if (story.isPrivate) "Private" else "Public",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(6.dp)
-                    )
-                }
-            }
-
-            Column(modifier = Modifier.padding(16.dp)) {
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-
-                    Column {
-
-                        Text(
-                            story.title,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.heading
-                        )
-                    }
-
-                    Row {
-
-                        Icon(
-                            Icons.Default.Edit,
-                            null,
-                            modifier = Modifier
-                                .size(20.dp)
-                                .clickable { onEdit() }
-                        )
-
-                        Spacer(modifier = Modifier.width(10.dp))
-
-                        Icon(
-                            Icons.Default.Delete,
-                            null,
-                            modifier = Modifier
-                                .size(20.dp)
-                                .clickable { onDelete() }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
+                // Title
                 Text(
-                    story.description,
-                    color = colors.muted
+                    story.title,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.heading
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-                Row {
+                // Description
+                Text(
+                    story.description,
+                    fontSize = 14.sp,
+                    color = colors.muted,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
 
-                    story.tags.forEach {
-
-                        PublishTagChip(
-                            it,
-                            Color.LightGray.copy(.3f),
-                            colors.muted
-                        )
-
-                        Spacer(modifier = Modifier.width(6.dp))
+                // Tags
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    story.tags.forEach { tag ->
+                        TagChip(tag, colors.accent, Color.White)
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                Row {
-                    story.tags.forEach {
-                        PublishTagChip(
-                            it,
-                            Color.LightGray.copy(alpha = 0.3f),
-                            colors.muted
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
+                // Info row: Duration & Age
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-
                     Row(verticalAlignment = Alignment.CenterVertically) {
-
                         Icon(
                             Icons.Outlined.AccessTime,
-                            null,
+                            contentDescription = null,
                             tint = colors.muted,
                             modifier = Modifier.size(16.dp)
                         )
-
                         Spacer(modifier = Modifier.width(4.dp))
-
-                        Text(
-                            durationText,
-                            color = colors.muted,
-                            fontSize = 12.sp
-                        )
+                        Text(durationText, fontSize = 12.sp, color = colors.muted)
                     }
 
-                    Text(
-                        "Age ${story.minimumAge}+",
-                        fontSize = 12.sp,
-                        color = colors.muted
-                    )
+                    Text("Age ${story.minimumAge}+", fontSize = 12.sp, color = colors.muted)
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                // Optional Edit/Delete row
+                if (onEdit != null && onDelete != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                        IconButton(onClick = onEdit) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = colors.muted)
+                        }
+                        IconButton(onClick = onDelete) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+                        }
+                    }
+                }
+            }
 
-                Button(
-                    onClick = { onPlay()},
-                    modifier = Modifier.fillMaxWidth()
+            // Private/Public badge overlay
+            Surface(
+                color = Color(0xFF2D2D2D).copy(alpha = 0.8f),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-
-                    Icon(Icons.Default.PlayArrow, null)
-
-                    Spacer(modifier = Modifier.width(6.dp))
-
-                    Text("Listen")
+                    Icon(
+                        imageVector = if (story.isPrivate) Icons.Outlined.Lock else Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        tint = Color(0xFFFFD700),
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (story.isPrivate) "Private" else "Public",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
     }
 }
-
 @Composable
 fun PublishTagChip(text: String, bgColor: Color, textColor: Color) {
 
     Surface(
         color = bgColor,
-        shape = RoundedCornerShape(6.dp)
+        shape = RoundedCornerShape(50) // 🔥 pill shape
     ) {
-
         Text(
             text,
             color = textColor,
             fontSize = 11.sp,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
         )
     }
 }
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FilterDialog(

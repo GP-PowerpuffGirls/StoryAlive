@@ -1,6 +1,7 @@
 package com.example.storyalive
 
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.net.Uri
@@ -25,7 +26,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.example.storyalive.components.StoryAliveTopBar
+import com.example.storyalive.model.VoiceActorRequest
 import com.example.storyalive.network.RetrofitClient
 import com.example.storyalive.ui.theme.StoryAliveTheme
 import com.example.storyalive.ui.theme.themeColors
@@ -37,6 +40,9 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
+import android.app.Activity
+import com.example.storyalive.model.AudioRequest
+import com.example.storyalive.model.Gender
 
 class VoiceActorActivity : ComponentActivity() {
 
@@ -92,21 +98,49 @@ fun VoiceActorScreen(
     var isPublic by remember { mutableStateOf(true) }
 
     var intensity by remember { mutableStateOf(2) }
+    var pendingRecording by remember { mutableStateOf(false) }
 
 
 
-    val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri ->
-        uri?.let { audioUri = it }
+
+    fun startRecording(context: android.content.Context) {
+        val file = File(context.cacheDir, "voice_actor_audio.3gp")
+        recorder = MediaRecorder().apply {
+            setAudioSource(MediaRecorder.AudioSource.MIC)
+            setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
+            setOutputFile(file.absolutePath)
+            prepare()
+            start()
+        }
+        audioFilePath = file.absolutePath
+        isRecording = true
+    }
+
+    fun stopRecording() {
+        recorder?.apply {
+            stop()
+            release()
+        }
+        recorder = null
+        isRecording = false
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (!granted) {
+        if (granted && pendingRecording) {
+            startRecording(context)
+        } else if (!granted) {
             Toast.makeText(context, "Microphone permission required", Toast.LENGTH_SHORT).show()
         }
+        pendingRecording = false
+    }
+
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { audioUri = it }
     }
 
     Column(
@@ -194,41 +228,18 @@ fun VoiceActorScreen(
 
                 Button(
                     onClick = {
-
-                        permissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
-
-                        if (!isRecording) {
-
-                            val file = File(context.cacheDir, "voice_actor_audio.3gp")
-
-                            recorder = MediaRecorder().apply {
-                                setAudioSource(MediaRecorder.AudioSource.MIC)
-                                setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
-                                setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
-                                setOutputFile(file.absolutePath)
-                                prepare()
-                                start()
-                            }
-
-                            audioFilePath = file.absolutePath
-
+                        val micPermission = android.Manifest.permission.RECORD_AUDIO
+                        if (ContextCompat.checkSelfPermission(context, micPermission) == PackageManager.PERMISSION_GRANTED) {
+                            if (!isRecording) startRecording(context) else stopRecording()
                         } else {
-
-                            recorder?.apply {
-                                stop()
-                                release()
-                            }
-
-                            recorder = null
+                            pendingRecording = !isRecording
+                            permissionLauncher.launch(micPermission)
                         }
-
-                        isRecording = !isRecording
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor =
-                            if (isRecording) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.primary
+                        containerColor = if (isRecording) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.primary
                     )
                 ) {
                     Text(if (isRecording) "Stop Recording" else "Record Audio")
@@ -308,38 +319,66 @@ fun VoiceActorScreen(
 
                     scope.launch {
                         try {
+                            val audioList = mutableListOf<AudioRequest>()
 
-                            // ✅ 2. Get audio file
-                            val file = when {
-                                audioFilePath != null -> File(audioFilePath!!)
-                                audioUri != null -> uriToFile(context, audioUri!!)
-                                else -> return@launch
+                            audioFilePath?.let {
+                                audioList.add(AudioRequest(
+                                    emotion = emotion.uppercase(),
+                                    intensity = intensity.toString(),
+                                    filepath = it
+                                ))
                             }
+
+                            audioUri?.let {
+                                val file = uriToFile(context, it)
+                                audioList.add(AudioRequest(
+                                    emotion = emotion.uppercase(),
+                                    intensity = intensity.toString(),
+                                    filepath = file.absolutePath
+                                ))
+                            }
+
+                            val newActor = VoiceActorRequest(
+                                actorName = name,
+                                gender = Gender.valueOf(gender.uppercase()),
+                                adult = isAdult,
+                                private = !isPublic,
+                                audios = audioList,
+                                preferredRole = "NONE"
+                            )
+                            // ✅ 2. Get audio file
+//                            val file = when {
+//                                audioFilePath != null -> File(audioFilePath!!)
+//                                audioUri != null -> uriToFile(context, audioUri!!)
+//                                else -> return@launch
+//                            }
 
                             // ✅ 3. Convert audio to Multipart
                             val audioPart = MultipartBody.Part.createFormData(
                                 "files",
-                                file.name,
-                                file.asRequestBody("audio/*".toMediaTypeOrNull())
+                                File(audioFilePath ?: uriToFile(context, audioUri!!).absolutePath).name,
+                                (File(audioFilePath ?: uriToFile(context, audioUri!!).absolutePath)).asRequestBody("audio/*".toMediaTypeOrNull())
                             )
+
 
                             // ✅ 4. Create JSON request
-                            val requestMap = mapOf(
-                                "actorName" to name,
-                                "gender" to gender.uppercase(),
-                                "isAdult" to isAdult,
-                                "isPrivate" to !isPublic,
-                                "preferredRole" to "NONE",
-                                "audios" to listOf(
-                                    mapOf(
-                                        "emotion" to emotion.uppercase(),
-                                        "intensity" to intensity.toString(),
-                                        "filepath" to ""
-                                    )
-                                )
-                            )
+//                            val requestMap = mapOf(
+//                                "actorName" to name,
+//                                "gender" to Gender.valueOf(gender.uppercase()),
+//                                "isAdult" to isAdult,
+//                                "isPrivate" to !isPublic,
+//                                "preferredRole" to "NONE",
+//                                "audios" to listOf(
+//                                    mapOf(
+//                                        "emotion" to emotion.uppercase(),
+//                                        "intensity" to intensity.toString(),
+//                                        "filepath" to ""
+//                                    )
+//                                )
+//                            )
 
-                            val json = Gson().toJson(requestMap)
+
+                            val json = Gson().toJson(newActor)
 
                             val requestBody = json.toRequestBody("application/json".toMediaTypeOrNull())
 
@@ -350,7 +389,13 @@ fun VoiceActorScreen(
                             // ✅ 6. Success
                             Toast.makeText(context, "Actor created ✅", Toast.LENGTH_SHORT).show()
 
-                            context.startActivity(Intent(context, UploadActivity::class.java))
+                            val resultIntent = Intent().apply {
+                                putExtra("NEW_VOICE_ACTOR", json)
+                            }
+                            val activity = context as? Activity
+                            activity?.setResult(Activity.RESULT_OK, resultIntent)
+                            activity?.finish()
+
 
                         } catch (e: Exception) {
                             Toast.makeText(context, "Error ❌ ${e.message}", Toast.LENGTH_LONG).show()

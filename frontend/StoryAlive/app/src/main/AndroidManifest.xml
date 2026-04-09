@@ -69,24 +69,22 @@
             android:theme="@style/Theme.StoryAlive" />
         <activity
             android:name=".LoginActivity"
-            android:exported="false"
-            android:label="@string/title_activity_login"
-            android:theme="@style/Theme.StoryAlive" />
-        <activity
-            android:name=".SignUpActivity"
             android:exported="true"
-            android:label="@string/app_name"
+            android:label="@string/title_activity_login"
             android:theme="@style/Theme.StoryAlive">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
         <activity
-            android:name=".MainActivity"
+            android:name=".SignUpActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.StoryAlive" />
+            android:theme="@style/Theme.StoryAlive">
+        </activity>
     </application>
 
 </manifest>

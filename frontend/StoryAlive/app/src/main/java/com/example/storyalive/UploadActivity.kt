@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -49,6 +50,8 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import android.app.Activity
+
 
 class UploadActivity : ComponentActivity() {
 
@@ -89,26 +92,39 @@ fun UploadScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var pdfUri by remember { mutableStateOf<Uri?>(null) }
-    var storyTitle by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var genre by remember { mutableStateOf("") }
-    var minAge by remember { mutableStateOf("") }
+
+    var storyTitle by rememberSaveable { mutableStateOf("") }
+    var description by rememberSaveable { mutableStateOf("") }
+    var genre by rememberSaveable { mutableStateOf("") }
+    var minAge by rememberSaveable { mutableStateOf("") }
 
     var backgroundMusic by remember { mutableStateOf(false) }
     var sfx by remember { mutableStateOf(false) }
     var publish by remember { mutableStateOf(false) }
 
-    var selectedActors by remember { mutableStateOf(setOf<String>()) }
-    var selectedTags by remember { mutableStateOf(setOf<String>()) }
+    var selectedActors by rememberSaveable { mutableStateOf(setOf<String>()) }
+    var selectedTags by rememberSaveable { mutableStateOf(setOf<String>()) }
 
     var genres by remember { mutableStateOf<List<String>>(emptyList()) }
     var tags by remember { mutableStateOf<List<String>>(emptyList()) }
-
+    var isProcessing by remember { mutableStateOf(false) }
     var actors by remember { mutableStateOf<List<VoiceActorRequest>>(emptyList()) }
     var currentPage by remember { mutableStateOf(0) }
     var isLoadingActors by remember { mutableStateOf(false) }
     var hasMoreActors by remember { mutableStateOf(true) }
 
+    val addActorLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.getStringExtra("NEW_VOICE_ACTOR")?.let { json ->
+                val newActor = Gson().fromJson(json, VoiceActorRequest::class.java)
+                actors = (actors + newActor).sortedWith(
+                    compareByDescending<VoiceActorRequest> { it.private }.thenBy { it.actorName }
+                )
+            }
+        }
+    }
 
 
     fun loadActorsPage(page: Int, pageSize: Int = 10) {
@@ -227,7 +243,7 @@ fun UploadScreen(
                     Toast.makeText(context, "Please select a PDF first", Toast.LENGTH_SHORT).show()
                     return@Button
                 }
-
+                isProcessing = true
                 scope.launch {
                     try {
 
@@ -283,20 +299,32 @@ fun UploadScreen(
                                 putExtra("STORY_JSON", storyJson)
                             }
 
-                            context.startActivity(intent)
                         } catch (e: Exception) {
                             Toast.makeText(context, "Upload failed ❌ ${e.message}", Toast.LENGTH_LONG).show()
                         }
 
                     } catch (e: Exception) {
                         e.printStackTrace()
+                    } finally {
+                        isProcessing = false
                     }
                 }
             },
             colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isProcessing
         ) {
-            Text("Process Story", color = colors.buttonText)
+            if (isProcessing) {
+                CircularProgressIndicator(
+                    color = colors.buttonText,
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Processing...", color = colors.buttonText)
+            } else {
+                Text("Process Story", color = colors.buttonText)
+            }
         }
     }
 }
@@ -543,9 +571,12 @@ fun VoiceActorCard(
             }
 
             Spacer(modifier = Modifier.height(10.dp))
-
+            val localContext = LocalContext.current
             Button(
-                onClick = onAddActorClick,
+                onClick = {
+                    val intent = Intent(localContext, VoiceActorActivity::class.java)
+                    onAddActorClick()
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
                 modifier = Modifier.fillMaxWidth()
             ) {

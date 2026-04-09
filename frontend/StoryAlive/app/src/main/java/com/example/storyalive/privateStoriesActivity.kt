@@ -52,6 +52,9 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import com.example.storyalive.components.StoryAliveTopBar
 import com.example.storyalive.model.StoryResponseDTO
 import com.example.storyalive.network.RetrofitClient
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+
 
 class privateStoriesActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -99,6 +102,13 @@ fun PrivateStoriesScreen(isLightTheme: Boolean = true, onStoryClick: (String, St
     var totalPages by remember { mutableStateOf(1) }
 
     val listState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+    fun formatDuration(durationInHours: Double): String {
+        val totalSeconds = (durationInHours * 3600).toInt() // convert hours to seconds
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+        return "%02d:%02d".format(minutes, seconds)
+    }
+
 
     // Function to fetch private stories
     suspend fun loadPrivateStories(page: Int) {
@@ -208,79 +218,108 @@ fun PrivateStoriesScreen(isLightTheme: Boolean = true, onStoryClick: (String, St
         }
     }
 }
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun PrivateStoryCard(colors: com.example.storyalive.ui.theme.ThemeColors,onClick: () -> Unit,story: StoryResponseDTO) {
+fun PrivateStoryCard(
+    colors: com.example.storyalive.ui.theme.ThemeColors,
+    onClick: () -> Unit,
+    story: StoryResponseDTO
+) {
     val durationText = remember(story.duration) {
-        val minutes = story.duration.toInt()
-        val seconds = ((story.duration - minutes) * 60).toInt()
-        "%02d:%02d".format(minutes, seconds)
+        formatDuration(story.duration)
     }
+
     Card(
         modifier = Modifier
-            .fillMaxWidth() // Matches the wide look in the image
+            .fillMaxWidth()
             .wrapContentHeight()
-            .clickable() { onClick() },
+            .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = colors.card),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column {
-            // Image Section with Overlay
-            Box(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), contentAlignment = Alignment.TopEnd) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                // Title at the very top
+                Text(
+                    story.title,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.heading,
+                    modifier = Modifier.padding(top = 8.dp) // optional, small space
+                )
 
-                // Yellow Private Badge Overlay
-                Surface(
-                    color = Color(0xFF2D2D2D).copy(alpha = 0.8f),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(12.dp)
+                // Description
+                Text(
+                    story.description,
+                    fontSize = 14.sp,
+                    color = colors.muted,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+
+                // Tags
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Lock,
-                            contentDescription = null,
-                            tint = Color(0xFFFFD700),
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Private",
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(story.title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.heading)
-                Text(story.description, fontSize = 14.sp, color = colors.muted, modifier = Modifier.padding(vertical = 4.dp))
-
-                Row(modifier = Modifier.padding(vertical = 8.dp)) {
                     story.tags.forEach { tag ->
                         TagChip(tag, colors.accent, Color.White)
-                        Spacer(modifier = Modifier.width(6.dp))
                     }
                 }
 
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Info row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.AccessTime, contentDescription = null, tint = colors.muted, modifier = Modifier.size(16.dp))
+                        Icon(
+                            Icons.Outlined.AccessTime,
+                            contentDescription = null,
+                            tint = colors.muted,
+                            modifier = Modifier.size(16.dp)
+                        )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(durationText, fontSize = 12.sp, color = colors.muted)
                     }
                     Text("Age ${story.minimumAge}+", fontSize = 12.sp, color = colors.muted)
                 }
             }
+
+            // Overlay badge (does not push the Column down)
+            Surface(
+                color = Color(0xFF2D2D2D).copy(alpha = 0.8f),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Lock,
+                        contentDescription = null,
+                        tint = Color(0xFFFFD700),
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Private",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     }
 }
-
 @Composable
 fun TagChip(text: String, bgColor: Color, textColor: Color) {
     Surface(
