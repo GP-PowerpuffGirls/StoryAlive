@@ -54,6 +54,7 @@ import com.example.storyalive.model.StoryResponseDTO
 import com.example.storyalive.network.RetrofitClient
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import com.google.gson.Gson
 
 
 class privateStoriesActivity : ComponentActivity() {
@@ -70,14 +71,12 @@ class privateStoriesActivity : ComponentActivity() {
                             StoryAliveTopBar(selectedPage = "Private")
                             PrivateStoriesScreen(
                                 isLightTheme = isLightTheme,
-                                onStoryClick = { title, date ->
-                                    // 5. Start StoryActivity via Intent
+                                onStoryClick = { story ->
                                     val intent = android.content.Intent(
                                         this@privateStoriesActivity,
                                         StoryActivity::class.java
                                     ).apply {
-                                        putExtra("STORY_TITLE", title)
-                                        putExtra("STORY_DATE", date)
+                                        putExtra("STORY_JSON", Gson().toJson(story)) // ✅ الصح
                                     }
                                     startActivity(intent)
                                 }
@@ -90,7 +89,7 @@ class privateStoriesActivity : ComponentActivity() {
     }
 }
 @Composable
-fun PrivateStoriesScreen(isLightTheme: Boolean = true, onStoryClick: (String, String) -> Unit) {
+fun PrivateStoriesScreen(isLightTheme: Boolean = true,onStoryClick: (StoryResponseDTO) -> Unit) {
     val colors = themeColors(isLightTheme)
     val context = androidx.compose.ui.platform.LocalContext.current
     val api = remember { RetrofitClient.createApi(context) }
@@ -199,7 +198,7 @@ fun PrivateStoriesScreen(isLightTheme: Boolean = true, onStoryClick: (String, St
             ) {
                 items(privateStories.size) { index ->
                     val story = privateStories[index]
-                    PrivateStoryCard(colors = colors,story=story, onClick = { onStoryClick(story.title, "Unknown Date") })
+                    PrivateStoryCard(colors = colors,story=story, onClick = { onStoryClick(story) })
                 }
 
                 if (isLoadingMore) {
@@ -335,26 +334,26 @@ fun TagChip(text: String, bgColor: Color, textColor: Color) {
         )
     }
 }
-@Preview(showBackground = true, name = "Light Mode - Private Stories")
-@Composable
-fun PrivateStoriesPreviewLight() {
-    StoryAliveTheme(darkTheme = false) {
-        Column {
-            StoryAliveTopBar(selectedPage = "Private")
-            // Mocking the screen in Light Mode
-            PrivateStoriesScreen(isLightTheme = true, onStoryClick = { _, _ -> })
-        }
-    }
-}
-
-@Preview(showBackground = true, name = "Dark Mode - Private Stories")
-@Composable
-fun PrivateStoriesPreviewDark() {
-    StoryAliveTheme(darkTheme = true) {
-        Column {
-            StoryAliveTopBar(selectedPage = "Private")
-            // Mocking the screen in Dark Mode
-            PrivateStoriesScreen(isLightTheme = false, onStoryClick = { _, _ -> })
-        }
-    }
-}
+//@Preview(showBackground = true, name = "Light Mode - Private Stories")
+//@Composable
+//fun PrivateStoriesPreviewLight() {
+//    StoryAliveTheme(darkTheme = false) {
+//        Column {
+//            StoryAliveTopBar(selectedPage = "Private")
+//            // Mocking the screen in Light Mode
+//            PrivateStoriesScreen(isLightTheme = true, onStoryClick = { _, _ -> })
+//        }
+//    }
+//}
+//
+//@Preview(showBackground = true, name = "Dark Mode - Private Stories")
+//@Composable
+//fun PrivateStoriesPreviewDark() {
+//    StoryAliveTheme(darkTheme = true) {
+//        Column {
+//            StoryAliveTopBar(selectedPage = "Private")
+//            // Mocking the screen in Dark Mode
+//            PrivateStoriesScreen(isLightTheme = false, onStoryClick = { _, _ -> })
+//        }
+//    }
+//}

@@ -41,6 +41,7 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import android.app.Activity
+import android.content.Context
 import com.example.storyalive.model.AudioRequest
 import com.example.storyalive.model.Gender
 
@@ -64,6 +65,19 @@ class VoiceActorActivity : ComponentActivity() {
         }
     }
 }
+fun getAudioDuration(context: Context, uri: Uri?): Int {
+    if (uri == null) return 0
+    val mediaPlayer = MediaPlayer()
+    return try {
+        mediaPlayer.setDataSource(context, uri)
+        mediaPlayer.prepare()
+        mediaPlayer.duration / 1000 // seconds
+    } catch (e: Exception) {
+        0
+    } finally {
+        mediaPlayer.release()
+    }
+}
 
 @Composable
 fun VoiceActorScreen(
@@ -71,22 +85,9 @@ fun VoiceActorScreen(
     isLightTheme: Boolean = true
 ) {
 
-    var emotion by remember { mutableStateOf("NARRATION") }
-    var emotions by remember { mutableStateOf(listOf<String>()) }
     val colors = themeColors(isLightTheme)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    LaunchedEffect(Unit) {
-        try {
-            val api = RetrofitClient.createApi(context)
-            val enums = api.getEnums()
-            // Assuming the API returns map with key "EMOTION" for emotions
-            emotions = enums["emotions"] ?: listOf("Neutral") // fallback
-        } catch (e: Exception) {
-            Toast.makeText(context, "Failed to load emotions: ${e.message}", Toast.LENGTH_LONG).show()
-            emotions = listOf("Neutral") // fallback
-        }
-    }
     var recorder: MediaRecorder? by remember { mutableStateOf(null) }
     var audioFilePath by remember { mutableStateOf<String?>(null) }
     var audioUri by remember { mutableStateOf<Uri?>(null) }
@@ -97,7 +98,6 @@ fun VoiceActorScreen(
     var isAdult by remember { mutableStateOf(false) }
     var isPublic by remember { mutableStateOf(true) }
 
-    var intensity by remember { mutableStateOf(2) }
     var pendingRecording by remember { mutableStateOf(false) }
 
 
@@ -264,28 +264,20 @@ fun VoiceActorScreen(
             colors = CardDefaults.cardColors(containerColor = colors.card),
             modifier = Modifier.fillMaxWidth()
         ) {
-
             Column(
                 modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
 
-                Text("Emotion")
-
-                SimpleDropdown(
-                    label = "Emotion",
-                    selectedItem = emotion,
-                    options = emotions,
-                    onItemSelected = { emotion = it }
+                Text(
+                    "Recording Instructions",
+                    style = MaterialTheme.typography.titleMedium
                 )
 
-                Text("Intensity: $intensity / 3")
-
-                Slider(
-                    value = intensity.toFloat(),
-                    onValueChange = { intensity = it.toInt() },
-                    valueRange = 1f..3f
-                )
+                Text("• Make sure your voice is clear")
+                Text("• Record in a quiet place (no background noise)")
+                Text("• Minimum duration: 3 seconds")
+                Text("• Maximum duration: 5 seconds")
             }
         }
 
@@ -323,8 +315,8 @@ fun VoiceActorScreen(
 
                             audioFilePath?.let {
                                 audioList.add(AudioRequest(
-                                    emotion = emotion.uppercase(),
-                                    intensity = intensity.toString(),
+                                    emotion = "NARRATION",
+                                    intensity = "LOW",
                                     filepath = it
                                 ))
                             }
@@ -332,8 +324,8 @@ fun VoiceActorScreen(
                             audioUri?.let {
                                 val file = uriToFile(context, it)
                                 audioList.add(AudioRequest(
-                                    emotion = emotion.uppercase(),
-                                    intensity = intensity.toString(),
+                                    emotion = "NARRATION",
+                                    intensity = "LOW",
                                     filepath = file.absolutePath
                                 ))
                             }
@@ -376,6 +368,27 @@ fun VoiceActorScreen(
 //                                    )
 //                                )
 //                            )
+                            val duration = when {
+                                audioUri != null -> getAudioDuration(context, audioUri)
+                                audioFilePath != null -> {
+                                    val mp = MediaPlayer()
+                                    try {
+                                        mp.setDataSource(audioFilePath)
+                                        mp.prepare()
+                                        mp.duration / 1000
+                                    } catch (e: Exception) {
+                                        0
+                                    } finally {
+                                        mp.release()
+                                    }
+                                }
+                                else -> 0
+                            }
+
+                            if (duration < 3 || duration > 5) {
+                                Toast.makeText(context, "Audio must be between 3 and 5 seconds", Toast.LENGTH_LONG).show()
+                                return@launch
+                            }
 
 
                             val json = Gson().toJson(newActor)
