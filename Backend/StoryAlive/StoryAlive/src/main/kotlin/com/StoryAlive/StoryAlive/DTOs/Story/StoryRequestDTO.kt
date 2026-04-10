@@ -9,7 +9,7 @@ import org.bson.types.ObjectId
 data class StoryRequestDTO(
     val title: String,
     val description: String,
-    val voiceActors: MutableMap<ObjectId, Pair<String,String>>? = mutableMapOf(),
+    val voiceActors: MutableMap<String, Pair<String,String>>? = mutableMapOf(),
     val genre: Genre,
     val isPrivate: Boolean,
     val hasSfx: Boolean,
