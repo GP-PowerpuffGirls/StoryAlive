@@ -9,8 +9,7 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
-    private const val BASE_URL = "http://10.0.2.2:8080/" //http://10.53.160.118:8080/ mariam's phone
-
+    private const val BASE_URL = "http://192.168.1.8:8080/"
     fun getToken(context: Context): String {
         val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
         return prefs.getString("access_token", "") ?: ""
