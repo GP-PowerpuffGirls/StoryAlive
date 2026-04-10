@@ -75,6 +75,7 @@ class StoryService(private val storyRepo: StoryRepo,
         println("LLM task finished")
 
         val storyDto: StoryCreationDTO = mapper.readValue(jsonString, StoryCreationDTO::class.java)
+        println(storyDto.toString())
         println("creating metadata")
         val currentStory= createStoryMetaData(storyRequest)
         println("creating metadata finished")
@@ -144,14 +145,23 @@ class StoryService(private val storyRepo: StoryRepo,
             if (storyRequest.voiceActors.isNullOrEmpty()) {
                 mutableMapOf()
             } else {
-                storyRequest.voiceActors.mapValues { (actorId) ->
-                    val actor = voiceActorService.getAudioByActorId(actorId)
-                    if (actor.get().audios.isNotEmpty()) {
-                        Pair(actor.get().actorName, "")
-                    } else {
-                        Pair("", "")
-                    }
-                }.toMutableMap()
+                storyRequest.voiceActors.map { (actorId, _) ->
+
+                    val objectId = ObjectId(actorId)
+
+                    val actor = voiceActorService
+                        .getAudioByActorId(objectId)
+                        .orElseThrow { RuntimeException("Voice actor not found: $actorId") }
+
+                    val pair =
+                        if (actor.audios.isNotEmpty()) {
+                            Pair(actor.actorName, "")
+                        } else {
+                            Pair("", "")
+                        }
+
+                    objectId to pair
+                }.toMap().toMutableMap()
             }
 
         val newStory = Story(

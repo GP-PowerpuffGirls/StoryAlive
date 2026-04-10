@@ -24,7 +24,7 @@ class UserService ( private val userRepo: UserRepo, private val hashEncoder : Ha
         return UserDTO(
             firstName = user.get().firstName,
             lastName = user.get().lastName,
-            email = user.get().lastName,
+            email = user.get().email,
             accountCreationDate = user.get().accountCreationDate,
             favouriteVoiceActors =  user.get().favouriteVoiceActors,
             totalPublishedStoriesCount = user.get().totalPublishedStoriesCount,
