@@ -198,8 +198,6 @@ fun PublishedScreen(isLightTheme: Boolean) {
                     PublishedStoryCard(
                         story = story,
                         colors = colors,
-                        onEdit = { editingStory = story },
-                        onDelete ={ stories = stories.filter { s -> s.storyId.timestamp != story.storyId.timestamp } },
                         onPlay = {
                             val storyJson = Gson().toJson(story)
 
@@ -260,8 +258,6 @@ fun PublishedStoryCard(
     colors: ThemeColors,
     story: StoryResponseDTO,
     onPlay: () -> Unit,
-    onEdit: (() -> Unit)? = null,
-    onDelete: (() -> Unit)? = null
 ) {
     val durationText = remember(story.duration) {
        formatDuration(story.duration)
@@ -329,19 +325,6 @@ fun PublishedStoryCard(
                     }
 
                     Text("Age ${story.minimumAge}+", fontSize = 12.sp, color = colors.muted)
-                }
-
-                // Optional Edit/Delete row
-                if (onEdit != null && onDelete != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
-                        IconButton(onClick = onEdit) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = colors.muted)
-                        }
-                        IconButton(onClick = onDelete) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
-                        }
-                    }
                 }
             }
 

@@ -223,6 +223,29 @@ fun VoiceActorScreen(
             }
         }
 
+        /* ---------------- INSTRUCTIONS ---------------- */
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = colors.card),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+
+                Text(
+                    "Recording Instructions",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Text("• Make sure your voice is clear")
+                Text("• Record in a quiet place (no background noise)")
+                Text("• Minimum duration: 3 seconds")
+                Text("• Maximum duration: 5 seconds")
+            }
+        }
+
         /* ---------------- Audio Sample ---------------- */
 
         Card(
@@ -273,28 +296,6 @@ fun VoiceActorScreen(
             }
         }
 
-        /* ---------------- Emotion + Intensity ---------------- */
-
-        Card(
-            colors = CardDefaults.cardColors(containerColor = colors.card),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-
-                Text(
-                    "Recording Instructions",
-                    style = MaterialTheme.typography.titleMedium
-                )
-
-                Text("• Make sure your voice is clear")
-                Text("• Record in a quiet place (no background noise)")
-                Text("• Minimum duration: 3 seconds")
-                Text("• Maximum duration: 5 seconds")
-            }
-        }
 
         /* ---------------- Buttons ---------------- */
 
