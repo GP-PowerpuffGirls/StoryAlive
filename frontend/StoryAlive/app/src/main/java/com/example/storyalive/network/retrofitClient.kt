@@ -42,12 +42,34 @@ object RetrofitClient {
 
     fun createApi(context: Context): ApiService {
         val client = OkHttpClient.Builder()
+//            .addInterceptor { chain ->
+//                val token = RetrofitClient.getToken(context).trim().replace("\\s+".toRegex(), "")
+//                val request = chain.request().newBuilder()
+//                    .addHeader("Authorization", "Bearer $token")
+//                    .build()
+//                chain.proceed(request)
+//            }
+//            .build()
+
             .addInterceptor { chain ->
-                val token = RetrofitClient.getToken(context).trim().replace("\\s+".toRegex(), "")
-                val request = chain.request().newBuilder()
-                    .addHeader("Authorization", "Bearer $token")
-                    .build()
-                chain.proceed(request)
+                val originalRequest = chain.request()
+
+                // ✅ check لو فيه No-Auth
+                val noAuth = originalRequest.header("No-Auth") != null
+                val isLogout = originalRequest.url.encodedPath.contains("logout")
+                val requestBuilder = originalRequest.newBuilder()
+
+                if (!noAuth && !isLogout) {
+                    val token = RetrofitClient.getToken(context)
+                        .trim()
+                        .replace("\\s+".toRegex(), "")
+
+                    requestBuilder.addHeader("Authorization", "Bearer $token")
+                }
+
+                requestBuilder.removeHeader("No-Auth") // ننضفها قبل الإرسال
+
+                chain.proceed(requestBuilder.build())
             }
             .build()
         return Retrofit.Builder()

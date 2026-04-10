@@ -42,6 +42,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import android.app.Activity
 import android.content.Context
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
 import com.example.storyalive.model.AudioRequest
 import com.example.storyalive.model.Gender
 
@@ -154,7 +156,8 @@ fun VoiceActorScreen(
 
         Text(
             "Create Voice Actor",
-            style = MaterialTheme.typography.headlineMedium
+            fontSize = 26.sp,
+            color = colors.heading
         )
 
         /* ---------------- Voice Actor Information ---------------- */
@@ -174,15 +177,23 @@ fun VoiceActorScreen(
                     style = MaterialTheme.typography.titleMedium
                 )
 
+                Text("Voice Actor Name *",color = colors.text)
+
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Voice Actor Name *") },
+                    label = { Text("Voice Actor Name") },
                     placeholder = { Text("Enter voice actor name") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colors.accent,
+                        unfocusedBorderColor = colors.muted,
+                        focusedLabelColor = colors.accent,
+                        cursorColor = colors.accent
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Text("Gender *")
+                Text("Gender *",color = colors.text)
 
                 SimpleDropdown(
                     label = "Gender",
@@ -194,7 +205,10 @@ fun VoiceActorScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
                         checked = isAdult,
-                        onCheckedChange = { isAdult = it }
+                        onCheckedChange = { isAdult = it },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = colors.accent
+                        )
                     )
                     Text("Adult Voice Actor")
                 }
@@ -223,7 +237,7 @@ fun VoiceActorScreen(
 
                 Text(
                     "Audio Sample",
-                    style = MaterialTheme.typography.titleMedium
+                    color = colors.heading
                 )
 
                 Button(
@@ -238,8 +252,8 @@ fun VoiceActorScreen(
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isRecording) MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.primary
+                        containerColor = if (isRecording) Color.Red else colors.accent,
+                        contentColor = colors.buttonText
                     )
                 ) {
                     Text(if (isRecording) "Stop Recording" else "Record Audio")
@@ -247,6 +261,7 @@ fun VoiceActorScreen(
 
                 Button(
                     onClick = { launcher.launch("audio/*") },
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Upload Audio")
@@ -290,9 +305,10 @@ fun VoiceActorScreen(
 
             Button(
                 onClick = { context.startActivity(Intent(context, UploadActivity::class.java)) },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(containerColor = colors.muted)
             ) {
-                Text("Cancel")
+                Text("Cancel",color=colors.buttonText)
             }
 
             Button(
@@ -416,9 +432,10 @@ fun VoiceActorScreen(
                     }
 
                 },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(containerColor = colors.accent)
             ) {
-                Text("Create Voice Actor")
+                Text("Create Voice Actor",color=colors.buttonText)
             }
         }
     }

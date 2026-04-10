@@ -215,9 +215,8 @@ fun UploadScreen(
             selectedActors,
             { selectedActors = it },
             {
-                context.startActivity(
-                    Intent(context, VoiceActorActivity::class.java)
-                )
+                val intent = Intent(context, VoiceActorActivity::class.java)
+                addActorLauncher.launch(intent)
             },
             loadNextPage = {
                 if (!isLoadingActors && hasMoreActors) {
@@ -574,7 +573,6 @@ fun VoiceActorCard(
             val localContext = LocalContext.current
             Button(
                 onClick = {
-                    val intent = Intent(localContext, VoiceActorActivity::class.java)
                     onAddActorClick()
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = colors.accent),

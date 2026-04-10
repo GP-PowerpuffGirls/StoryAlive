@@ -312,7 +312,9 @@ fun SettingsScreen(isLightTheme: Boolean = true, onThemeChange: (Boolean) -> Uni
                     scope.launch {
                         try {
                             val api = RetrofitClient.createApi(context)
-                            val refreshToken = RetrofitClient.getRefreshToken(context).replace("\\s".toRegex(), "")
+                            val refreshToken = RetrofitClient.getRefreshToken(context)
+                                .trim()
+                                .replace("\\s+".toRegex(), "")
                             val response = api.logout("Bearer $refreshToken")
                             if (response.isSuccessful) {
                                 // Clear local session / token
