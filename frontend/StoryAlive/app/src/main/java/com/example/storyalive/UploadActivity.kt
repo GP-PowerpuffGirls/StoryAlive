@@ -51,6 +51,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import android.app.Activity
+import androidx.compose.ui.graphics.Color
 
 
 class UploadActivity : ComponentActivity() {
@@ -112,7 +113,7 @@ fun UploadScreen(
     var currentPage by remember { mutableStateOf(0) }
     var isLoadingActors by remember { mutableStateOf(false) }
     var hasMoreActors by remember { mutableStateOf(true) }
-
+    var isDone by remember { mutableStateOf(false) }
     val addActorLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -243,6 +244,7 @@ fun UploadScreen(
                     return@Button
                 }
                 isProcessing = true
+                isDone = false
                 scope.launch {
                     try {
 
@@ -289,14 +291,15 @@ fun UploadScreen(
                         try {
                             val story = RetrofitClient.createApi(context).createStory(pdfPart, storyRequestBody)
 
-                            Toast.makeText(context, "Upload Success ✅", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Processing Done ✅", Toast.LENGTH_SHORT).show()
 
                             val gson = Gson()
                             val storyJson = gson.toJson(story)
-
+                            kotlinx.coroutines.delay(1500)
                             val intent = Intent(context, StoryActivity::class.java).apply {
                                 putExtra("STORY_JSON", storyJson)
                             }
+                            context.startActivity(intent)
 
                         } catch (e: Exception) {
                             Toast.makeText(context, "Upload failed ❌ ${e.message}", Toast.LENGTH_LONG).show()
@@ -324,6 +327,7 @@ fun UploadScreen(
             } else {
                 Text("Process Story", color = colors.buttonText)
             }
+
         }
     }
 }
