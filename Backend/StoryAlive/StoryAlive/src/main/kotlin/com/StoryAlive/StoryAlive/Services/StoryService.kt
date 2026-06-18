@@ -7,6 +7,7 @@ import com.StoryAlive.StoryAlive.DTOs.Key.CastKey
 import com.StoryAlive.StoryAlive.DTOs.Key.VoiceActorKey
 import com.StoryAlive.StoryAlive.Enums.BGMusicEmotion
 import com.StoryAlive.StoryAlive.Enums.Emotion
+import com.StoryAlive.StoryAlive.Enums.Gender
 import com.StoryAlive.StoryAlive.Enums.Genre
 import com.StoryAlive.StoryAlive.Enums.Intensity
 import com.StoryAlive.StoryAlive.Enums.LocationName
@@ -98,8 +99,8 @@ class StoryService(private val storyRepo: StoryRepo,
 
         println("saving to cloud")
         val updatedJson = mapper.writeValueAsString(storyDto)
-        val jsonPath = supabaseStorageService.saveJsonToCloud(updatedJson, user!!.userId)
-        val pdfPath = supabaseStorageService.savePdfToCloud(pdf, user!!.userId )
+        val jsonPath = supabaseStorageService.saveJsonToCloud(updatedJson, user.userId)
+        val pdfPath = supabaseStorageService.savePdfToCloud(pdf, user.userId )
         println("done")
 
         currentStory.duration = ttsResponse.duration
@@ -222,17 +223,7 @@ class StoryService(private val storyRepo: StoryRepo,
             }
         }
     }
-
     fun assignActorsToCast(currentStory: Story, storyDto: StoryCreationDTO) {
-        val demoMap = mapOf(
-            "ماريا" to "maria kaiser",
-            "كريستين" to "christin",
-            "منة" to "menna mohamed",
-            "حبيبة" to "habiba mohamed",
-            "مريم" to "mariam elkondakly",
-            "منّة" to "menna mohamed",
-            "نورا" to "nora"
-        )
         val allVoiceActors: List<VoiceActor> = voiceActorService.getAllPublicVoiceActors()
         println("all voice actors: $allVoiceActors" )
         // Build audio lookup for fast access
@@ -245,8 +236,7 @@ class StoryService(private val storyRepo: StoryRepo,
             .groupBy { VoiceActorKey(it.isAdult, it.gender, it.preferredRole) }
             .mapValues { it.value.map { actor -> actor.voiceActorId to actor.actorName }.toMutableList() }
             .toMutableMap()
-        val demoActorsMap: MutableMap<String, VoiceActor> =
-            allVoiceActors.associateBy { it.actorName }.toMutableMap()
+        println("actors map: $actorsMap" )
 
         // Assign user-selected actors first
         val mutableVoiceActors = currentStory.voiceActors.toMutableMap()
@@ -257,46 +247,24 @@ class StoryService(private val storyRepo: StoryRepo,
             actorsMap[key]?.removeIf { it.first == actorId }
             mutableVoiceActors[actorId] = pair
         }
-
         println("entire cast: ${storyDto.cast}")
         // Assign remaining actors to cast members
         storyDto.cast.forEach { castMember ->
-
             if (castMember.name == "راوي") {
                 castMember.preferredRole = PreferredRole.NARRATOR
-            } else {
+            }
+            else{
                 castMember.preferredRole = PreferredRole.NONE
             }
-
             val key = VoiceActorKey(castMember.isAdult, castMember.gender, castMember.preferredRole)
-
-            // 1️⃣ Check demo map
-            val demoActorName = demoMap[castMember.name]
-            val selectedActor: Pair<ObjectId, String> = if (demoActorName != null && demoActorsMap.containsKey(demoActorName)) {
-
-                val actor = demoActorsMap[demoActorName]!!
-
-                // remove from pool so it can't be reused
-                val poolKey = VoiceActorKey(actor.isAdult, actor.gender, actor.preferredRole)
-                actorsMap[poolKey]?.removeIf { it.first == actor.voiceActorId }
-
-                actor.voiceActorId to actor.actorName
-
-            } else {
-
-                // 2️⃣ fallback to normal actor selection
-                val availableActors = actorsMap[key]
-                    ?: throw RuntimeException("No available actor for cast member ${castMember.name} with $key")
-
-                availableActors.removeAt(0)
-            }
-
-            mutableVoiceActors[selectedActor.first] =
-                selectedActor.second to castMember.name
+            val availableActors = actorsMap[key]
+                ?: throw RuntimeException("No available actor for cast member ${castMember.name} with $key")
+            println("cast member: $castMember")
+            println("available actors while mapping to cast: $availableActors")
+            val selectedActor = availableActors.removeAt(0)
+            mutableVoiceActors[selectedActor.first] = selectedActor.second to castMember.name
         }
         currentStory.voiceActors = mutableVoiceActors
-        println("selected voice actors: ${currentStory.voiceActors}")
-
 
         // Assign audio to title and sentences
         val castMap: MutableMap<CastKey, Audio> = mutableMapOf()
@@ -323,6 +291,108 @@ class StoryService(private val storyRepo: StoryRepo,
             }
         }
     }
+
+//    fun assignActorsToCast(currentStory: Story, storyDto: StoryCreationDTO) {
+//        val demoMap = mapOf(
+//            "ماريا" to "maria kaiser",
+//            "كريستين" to "christin",
+//            "منة" to "menna mohamed",
+//            "حبيبة" to "habiba mohamed",
+//            "مريم" to "mariam elkondakly",
+//            "منّة" to "menna mohamed",
+//            "نورا" to "nora"
+//        )
+//        val allVoiceActors: List<VoiceActor> = voiceActorService.getAllPublicVoiceActors()
+//        println("all voice actors: $allVoiceActors" )
+//        // Build audio lookup for fast access
+//        val actorAudioIndex: Map<ObjectId, Map<Pair<Emotion, Intensity>, Audio>> = allVoiceActors.associate { actor ->
+//            actor.voiceActorId to actor.audios.associateBy { it.emotion to it.intensity }
+//        }
+//
+//        // Build mutable pool of actors by VoiceActorKey
+//        val actorsMap: MutableMap<VoiceActorKey, MutableList<Pair<ObjectId, String>>> = allVoiceActors
+//            .groupBy { VoiceActorKey(it.isAdult, it.gender, it.preferredRole) }
+//            .mapValues { it.value.map { actor -> actor.voiceActorId to actor.actorName }.toMutableList() }
+//            .toMutableMap()
+//        val demoActorsMap: MutableMap<String, VoiceActor> =
+//            allVoiceActors.associateBy { it.actorName }.toMutableMap()
+//
+//        // Assign user-selected actors first
+//        val mutableVoiceActors = currentStory.voiceActors.toMutableMap()
+//        currentStory.voiceActors.forEach { (actorId, pair) ->
+//            val actor = voiceActorService.getAudioByActorId(actorId)
+//                .orElseThrow { RuntimeException("VoiceActor not found: $actorId") }
+//            val key = VoiceActorKey(actor.isAdult, actor.gender, actor.preferredRole)
+//            actorsMap[key]?.removeIf { it.first == actorId }
+//            mutableVoiceActors[actorId] = pair
+//        }
+//
+//        println("entire cast: ${storyDto.cast}")
+//        // Assign remaining actors to cast members
+//        storyDto.cast.forEach { castMember ->
+//
+//            if (castMember.name == "راوي") {
+//                castMember.gender = Gender.MALE
+//                castMember.preferredRole = PreferredRole.NARRATOR
+//            } else {
+//                castMember.preferredRole = PreferredRole.NONE
+//            }
+//
+//            val key = VoiceActorKey(castMember.isAdult, castMember.gender, castMember.preferredRole)
+//
+//            // 1️⃣ Check demo map
+//            val demoActorName = demoMap[castMember.name]
+//            val selectedActor: Pair<ObjectId, String> = if (demoActorName != null && demoActorsMap.containsKey(demoActorName)) {
+//
+//                val actor = demoActorsMap[demoActorName]!!
+//
+//                // remove from pool so it can't be reused
+//                val poolKey = VoiceActorKey(actor.isAdult, actor.gender, actor.preferredRole)
+//                actorsMap[poolKey]?.removeIf { it.first == actor.voiceActorId }
+//
+//                actor.voiceActorId to actor.actorName
+//
+//            } else {
+//
+//                // 2️⃣ fallback to normal actor selection
+//                val availableActors = actorsMap[key]
+//                    ?: throw RuntimeException("No available actor for cast member ${castMember.name} with $key")
+//
+//                availableActors.removeAt(0)
+//            }
+//
+//            mutableVoiceActors[selectedActor.first] =
+//                selectedActor.second to castMember.name
+//        }
+//        currentStory.voiceActors = mutableVoiceActors
+//        println("selected voice actors: ${currentStory.voiceActors}")
+//
+//
+//        // Assign audio to title and sentences
+//        val castMap: MutableMap<CastKey, Audio> = mutableMapOf()
+//        storyDto.chapters.forEach { chapter ->
+//            val sentences = listOf(chapter.title) + chapter.scenes.flatMap { it.sentences }
+//            sentences.forEach { sentence ->
+//                val actorId = currentStory.voiceActors.entries.firstOrNull { it.value.second == sentence.speaker }?.key
+//                    ?: throw RuntimeException("No actor assigned for speaker ${sentence.speaker}")
+//                val intensitiesPriority = getIntensityFallbacks(sentence.intensity)
+//                val audio = actorAudioIndex[actorId]?.let { emotionMap ->
+//                    intensitiesPriority
+//                        .firstNotNullOfOrNull { intensity ->
+//                            emotionMap[sentence.emotion to intensity]
+//                        }
+//                }
+//                    ?: actorAudioIndex[actorId]?.get(Emotion.NARRATION to Intensity.LOW)
+//                    ?: throw RuntimeException(
+//                        "No audio found for actor $actorId with emotion ${sentence.emotion} and intensity ${sentence.intensity}"
+//                    )
+//                val castKey = CastKey(actorId, sentence.speaker, sentence.emotion, sentence.intensity)
+//                castMap[castKey] = audio
+//                sentence.speaker = castKey.castName
+//                sentence.prosodyReference = audio.filepath
+//            }
+//        }
+//    }
 
     fun getIntensityFallbacks(base: Intensity): List<Intensity> = when (base) {
         Intensity.LOW -> listOf(Intensity.LOW, Intensity.MEDIUM, Intensity.HIGH)

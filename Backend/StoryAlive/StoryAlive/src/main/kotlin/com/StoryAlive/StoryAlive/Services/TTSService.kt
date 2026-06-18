@@ -26,8 +26,7 @@ class TTSService(@Value("\${TTS_MODEL_URL}") private val modelUrl: String) {
     fun generateAudioFromStory(storyDto: StoryCreationDTO): TTSResponse {
 
         val taskId = getTaskId(storyDto)
-
-        val timeoutMillis = 60 * 60 * 1000L
+        val timeoutMillis = 24 * 60 * 60 * 1000L
         val pollInterval = 10_000L // 10 sec
         val startTime = System.currentTimeMillis()
 
