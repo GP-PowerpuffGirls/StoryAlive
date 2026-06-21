@@ -10,6 +10,6 @@ public data class SentenceDto(
     var prosodyReference: String,
     val emotion: Emotion,
     val intensity: Intensity,
-    var duration: Float,
-    var audioPath: String
+    var duration: Float=0.0f,
+    var audioPath: String=""
 )
