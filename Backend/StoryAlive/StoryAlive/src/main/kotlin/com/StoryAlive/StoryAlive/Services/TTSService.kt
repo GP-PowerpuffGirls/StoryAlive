@@ -13,7 +13,7 @@ import java.net.SocketTimeoutException
 import java.util.concurrent.TimeUnit
 
 @Service
-class TTSService(@Value("\${TTS_MODEL_URL}") private val modelUrl: String) {
+class TTSService(@Value("\${TTS_MODEL_URL2}") private val modelUrl: String) {
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)

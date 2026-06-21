@@ -119,6 +119,7 @@ class StoryService(private val storyRepo: StoryRepo,
 
         val jsonString = supabaseStorageService.downloadFileFromSupabase(currentStory.jsonPath ?: "")
         val storyDto: StoryCreationDTO = mapper.readValue(jsonString, StoryCreationDTO::class.java)
+        println(storyDto.toString())
         storyDto.storyId = currentStory.storyId.toString()
         assignActorsToCast(currentStory, storyDto)
         if (currentStory.hasBackgroundMusic) {

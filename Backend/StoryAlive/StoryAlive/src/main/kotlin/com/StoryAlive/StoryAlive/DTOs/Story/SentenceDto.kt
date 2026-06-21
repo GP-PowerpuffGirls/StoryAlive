@@ -9,5 +9,7 @@ public data class SentenceDto(
     val sentence: String,
     var prosodyReference: String,
     val emotion: Emotion,
-    val intensity: Intensity
+    val intensity: Intensity,
+    var duration: Float,
+    var audioPath: String
 )
