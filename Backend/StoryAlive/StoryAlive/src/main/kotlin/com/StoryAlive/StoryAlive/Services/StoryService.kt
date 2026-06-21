@@ -5,9 +5,9 @@ import com.StoryAlive.StoryAlive.DTOs.Story.StoryCreationDTO
 import com.StoryAlive.StoryAlive.DTOs.Story.StoryRequestDTO
 import com.StoryAlive.StoryAlive.DTOs.Key.CastKey
 import com.StoryAlive.StoryAlive.DTOs.Key.VoiceActorKey
+import com.StoryAlive.StoryAlive.DTOs.Story.RequestStoryUpdateDTO
 import com.StoryAlive.StoryAlive.Enums.BGMusicEmotion
 import com.StoryAlive.StoryAlive.Enums.Emotion
-import com.StoryAlive.StoryAlive.Enums.Gender
 import com.StoryAlive.StoryAlive.Enums.Genre
 import com.StoryAlive.StoryAlive.Enums.Intensity
 import com.StoryAlive.StoryAlive.Enums.LocationName
@@ -138,6 +138,29 @@ class StoryService(private val storyRepo: StoryRepo,
         return storyRepo.save(currentStory)
     }
 
+    fun updateStory(storyId: ObjectId, sentenceId: ObjectId, requestStoryUpdateDTO: RequestStoryUpdateDTO): Story {
+
+        val currentStory = storyRepo.findById(storyId).orElseThrow { RuntimeException("Story not found with id $storyId") }
+
+        val oldJsonPath = currentStory.jsonPath
+        val currentJsonString = supabaseStorageService.downloadFileFromSupabase(oldJsonPath)
+        val currentStoryDto = mapper.readValue(currentJsonString, StoryCreationDTO::class.java)
+
+        val response = ttsService.updateStoryAudio(currentStoryDto, sentenceId, requestStoryUpdateDTO)
+        val updatedJson = mapper.writeValueAsString(response.storyCreationDTO)
+        val newJsonPath = supabaseStorageService.saveJsonToCloud(updatedJson, userService.getCurrentUser().getUserId())
+
+        currentStory.duration = response.duration
+        currentStory.finalAudioPath = response.audioPath
+        currentStory.jsonPath = newJsonPath
+        currentStory.modifiedAt = java.time.Instant.now()
+
+        val savedStory = storyRepo.save(currentStory)
+
+        supabaseStorageService.deleteFileFromSupabase(oldJsonPath)
+
+        return savedStory
+    }
 
     //HELPER FUNCTIONS
     fun createStoryMetaData(storyRequest: StoryRequestDTO): Story {
@@ -224,6 +247,7 @@ class StoryService(private val storyRepo: StoryRepo,
             }
         }
     }
+
     fun assignActorsToCast(currentStory: Story, storyDto: StoryCreationDTO) {
         val allVoiceActors: List<VoiceActor> = voiceActorService.getAllPublicVoiceActors()
         println("all voice actors: $allVoiceActors" )
@@ -291,6 +315,12 @@ class StoryService(private val storyRepo: StoryRepo,
                 sentence.prosodyReference = audio.filepath
             }
         }
+    }
+
+    fun getIntensityFallbacks(base: Intensity): List<Intensity> = when (base) {
+        Intensity.LOW -> listOf(Intensity.LOW, Intensity.MEDIUM, Intensity.HIGH)
+        Intensity.MEDIUM -> listOf(Intensity.MEDIUM, Intensity.LOW, Intensity.HIGH)
+        Intensity.HIGH -> listOf(Intensity.HIGH, Intensity.MEDIUM, Intensity.LOW)
     }
 
 //    fun assignActorsToCast(currentStory: Story, storyDto: StoryCreationDTO) {
@@ -394,12 +424,5 @@ class StoryService(private val storyRepo: StoryRepo,
 //            }
 //        }
 //    }
-
-    fun getIntensityFallbacks(base: Intensity): List<Intensity> = when (base) {
-        Intensity.LOW -> listOf(Intensity.LOW, Intensity.MEDIUM, Intensity.HIGH)
-        Intensity.MEDIUM -> listOf(Intensity.MEDIUM, Intensity.LOW, Intensity.HIGH)
-        Intensity.HIGH -> listOf(Intensity.HIGH, Intensity.MEDIUM, Intensity.LOW)
-    }
-
 
 }

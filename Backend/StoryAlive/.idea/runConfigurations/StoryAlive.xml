@@ -10,6 +10,7 @@
       <env name="SUPABASE_KEY" value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2bHh2aGRnYWNrdHNneWt5Y2ttIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTk2MTQ5MSwiZXhwIjoyMDg3NTM3NDkxfQ.tzfHcbzwzctHDDDp3vk4JGz30ajN2szncAV-1wK7_pM" />
       <env name="SUPABASE_URL" value="https://kvlxvhdgacktsgykyckm.supabase.co/" />
       <env name="TTS_MODEL_URL" value="https://mariakaiser-tts-api.hf.space/tts/" />
+      <env name="TTS_MODEL_URL2" value="https://thigh-ambulance-unlucky.ngrok-free.dev/tts/" />
     </envs>
     <module name="StoryAlive.main" />
     <option name="SPRING_BOOT_MAIN_CLASS" value="com.StoryAlive.StoryAlive.StoryAliveApplication" />

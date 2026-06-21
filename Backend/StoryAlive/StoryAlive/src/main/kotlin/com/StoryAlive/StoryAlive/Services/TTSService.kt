@@ -1,12 +1,15 @@
 package com.StoryAlive.StoryAlive.Services
 
+import com.StoryAlive.StoryAlive.DTOs.Story.RequestStoryUpdateDTO
 import com.StoryAlive.StoryAlive.DTOs.Story.StoryCreationDTO
 import com.StoryAlive.StoryAlive.DTOs.Story.TTSResponse
+import com.StoryAlive.StoryAlive.DTOs.Story.UpdateStoryAudioRequestDTO
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.bson.types.ObjectId
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.net.SocketTimeoutException
@@ -58,6 +61,39 @@ class TTSService(@Value("\${TTS_MODEL_URL2}") private val modelUrl: String) {
         }
     }
 
+    fun updateStoryAudio(storyDto: StoryCreationDTO, sentenceId: ObjectId, requestStoryUpdateDTO: RequestStoryUpdateDTO): TTSResponse {
+
+        val taskId = getUpdateTaskId(
+            storyDto,
+            sentenceId,
+            requestStoryUpdateDTO
+        )
+        val timeoutMillis = 24 * 60 * 60 * 1000L
+        val pollInterval = 10_000L // 10 sec
+        val startTime = System.currentTimeMillis()
+
+        while (true) {
+            try {
+                val response = getUpdatedAudioFromTTS(taskId)
+                if (response != null) return response
+            }
+            catch (e: java.net.SocketTimeoutException) {
+                println("TTS request timed out, retrying...")
+
+            }
+            catch (e: Exception) {
+                println("Unexpected error during TTS polling: ${e.message}")
+            }
+
+            if (System.currentTimeMillis() - startTime > timeoutMillis) {
+                throw RuntimeException("TTS model processing timed out")
+            }
+
+            println("TTS still processing, waiting $pollInterval ms...")
+            Thread.sleep(pollInterval)
+        }
+    }
+
     private fun getAudioFromTTS(taskId: String): TTSResponse? {
 
         val request = Request.Builder()
@@ -68,27 +104,70 @@ class TTSService(@Value("\${TTS_MODEL_URL2}") private val modelUrl: String) {
         client.newCall(request).execute().use { response ->
 
             if (!response.isSuccessful) {
-                throw RuntimeException("TTS result request failed: ${response.body?.string()}")
+                throw RuntimeException(
+                    "TTS result request failed: ${response.body?.string()}"
+                )
             }
 
             val jsonString = response.body!!.string()
             val node = mapper.readTree(jsonString)
 
-            val status = node.get("status")?.asText() ?: "unknown"
+            return when (node["status"].asText()) {
 
-            return when (status) {
                 "processing" -> null
+
                 "completed" -> {
-                    val fileName = node.get("fileName")?.asText()
-                        ?: throw RuntimeException("Missing fileName in completed task")
-                    val duration = node.get("duration")?.asDouble()
-                        ?: throw RuntimeException("Missing duration in completed task")
-                    val audioPath = node.get("audioPath")?.asText()
-                        ?: throw RuntimeException("Missing audioPath in completed task")
-                    TTSResponse(fileName, duration, audioPath)
+                    mapper.treeToValue(
+                        node,
+                        TTSResponse::class.java
+                    )
                 }
-                "failed" -> throw RuntimeException("TTS failed: ${node.get("error")?.asText() ?: "Unknown"}")
-                else -> null  // unknown status → treat as still processing
+
+                "failed" ->
+                    throw RuntimeException(
+                        node["error"]?.asText() ?: "Unknown error"
+                    )
+
+                else -> null
+            }
+        }
+    }
+
+    private fun getUpdatedAudioFromTTS(taskId: String): TTSResponse? {
+
+        val request = Request.Builder()
+            .url("${modelUrl.trimEnd('/')}/results/$taskId")
+            .get()
+            .build()
+
+        client.newCall(request).execute().use { response ->
+
+            if (!response.isSuccessful) {
+                throw RuntimeException(
+                    "TTS result request failed: ${response.body?.string()}"
+                )
+            }
+
+            val jsonString = response.body!!.string()
+            val node = mapper.readTree(jsonString)
+
+            return when(node["status"].asText()) {
+
+                "processing" -> null
+
+                "completed" -> {
+                    mapper.treeToValue(
+                        node,
+                        TTSResponse::class.java
+                    )
+                }
+
+                "failed" ->
+                    throw RuntimeException(
+                        node["error"]?.asText() ?: "Unknown error"
+                    )
+
+                else -> null
             }
         }
     }
@@ -125,5 +204,39 @@ class TTSService(@Value("\${TTS_MODEL_URL2}") private val modelUrl: String) {
         val postJson = mapper.readTree(postResponse)
 
         return postJson.get("task_id").asText()
+    }
+
+    private fun getUpdateTaskId(storyDto: StoryCreationDTO, sentenceId: ObjectId, request: RequestStoryUpdateDTO): String {
+
+        val payload = UpdateStoryAudioRequestDTO(
+            story = storyDto,
+            sentenceId = sentenceId.toHexString(),
+            emotion = request.emotion,
+            intensity = request.intensity
+        )
+
+        val json = mapper.writeValueAsString(payload)
+
+        val requestBody =
+            json.toRequestBody("application/json".toMediaType())
+
+        val httpRequest = Request.Builder()
+            .url("${modelUrl.trimEnd('/')}/update-story-audio")
+            .post(requestBody)
+            .build()
+
+        client.newCall(httpRequest).execute().use { response ->
+
+            if (!response.isSuccessful) {
+                throw RuntimeException(
+                    "Update story request failed: ${response.body?.string()}"
+                )
+            }
+
+            val responseBody = response.body!!.string()
+            val responseJson = mapper.readTree(responseBody)
+
+            return responseJson["task_id"].asText()
+        }
     }
 }
