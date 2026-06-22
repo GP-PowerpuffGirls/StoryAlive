@@ -351,7 +351,7 @@ fun VoiceActorScreen(
                                 actorName = name,
                                 gender = Gender.valueOf(gender.uppercase()),
                                 adult = isAdult,
-                                private = !isPublic,
+                                isPrivate = !isPublic,
                                 audios = audioList,
                                 preferredRole = "NONE"
                             )

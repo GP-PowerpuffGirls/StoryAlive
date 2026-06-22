@@ -2,6 +2,7 @@ package com.example.storyalive
 
 import android.media.MediaPlayer
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -19,6 +20,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -60,6 +64,10 @@ import com.example.storyalive.ui.theme.StoryAliveTheme
 import com.example.storyalive.ui.theme.themeColors
 import com.google.gson.Gson
 import androidx.compose.material.icons.outlined.Pause
+import com.example.storyalive.model.Sentence
+import com.example.storyalive.model.TimedSentence
+import com.example.storyalive.model.TranscriptResponse
+import kotlinx.coroutines.withContext
 
 class StoryActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -89,39 +97,75 @@ class StoryActivity : ComponentActivity() {
         }
     }
 }
+fun flattenSentences(data: TranscriptResponse): List<Sentence> {
+    return data.chapters
+        .flatMap { it.scenes }
+        .flatMap { it.sentences }
+}
 
+fun generateTimedSentences(
+    sentences: List<Sentence>,
+    totalDuration: Double
+): List<TimedSentence> {
+
+    val totalWords = sentences.sumOf { it.sentence.split(" ").size }
+    var currentTime = 0.0
+
+    return sentences.map { s ->
+
+        val wordCount = s.sentence.split(" ").size
+        val ratio = wordCount.toDouble() / totalWords
+        val duration = ratio * totalDuration
+
+        val timed = TimedSentence(
+            text = s.sentence,
+            speaker = s.speaker,
+            start = currentTime,
+            end = currentTime + duration
+        )
+
+        currentTime += duration
+        timed
+    }
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StoryDetailScreen(
     story: StoryResponseDTO,
     isLightTheme: Boolean = true
 ) {
-
     val colors = themeColors(isLightTheme)
-    val scrollState = rememberScrollState()
-
-    var playbackPosition by remember { mutableFloatStateOf(0.15f) }
+    var timedTranscript by remember { mutableStateOf<List<TimedSentence>>(emptyList()) }
     var volume by remember { mutableFloatStateOf(0.8f) }
-    val context = LocalContext.current
     var isReady by remember { mutableStateOf(false) }
     var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
     var isPlaying by remember { mutableStateOf(false) }
     var currentPosition by remember { mutableFloatStateOf(0f) }
+    val listState = rememberLazyListState()
+    val currentSentenceIndex = remember(currentPosition, timedTranscript) {
+        val currentSec = currentPosition / 1100.0
+        timedTranscript.indexOfFirst { currentSec in it.start..it.end }
+    }
+    LaunchedEffect(currentSentenceIndex) {
+        if (currentSentenceIndex != -1){
+            listState.animateScrollToItem(currentSentenceIndex)
+        }
+    }
+    //MEDIA PLAYER
     DisposableEffect(Unit) {
         onDispose {
             mediaPlayer?.release()
         }
     }
-    LaunchedEffect(mediaPlayer) {
-        while (true) {
+    LaunchedEffect(isPlaying) {
+        while (isPlaying) {
             mediaPlayer?.let {
-                if (it.isPlaying) {
-                    currentPosition = it.currentPosition.toFloat()
-                }
+               currentPosition=it.currentPosition.toFloat()
             }
-            kotlinx.coroutines.delay(500)
+            kotlinx.coroutines.delay(100)
         }
     }
+    //LOAD AUDIO
     LaunchedEffect(Unit) {
         try {
             mediaPlayer = MediaPlayer().apply {
@@ -130,7 +174,7 @@ fun StoryDetailScreen(
                 prepareAsync()
 
                 setOnPreparedListener {
-                    isReady=true
+                    isReady = true
                 }
 
                 setOnCompletionListener {
@@ -141,308 +185,378 @@ fun StoryDetailScreen(
             e.printStackTrace()
         }
     }
-    Column(
+    //LOAD TRANSCRIPT
+    LaunchedEffect(story.jsonPath) {
+        try {
+            val json = withContext(kotlinx.coroutines.Dispatchers.IO){
+                java.net.URL(story.jsonPath).openStream().bufferedReader().use { it.readText() }
+            }
+            Log.d("StoryDebug", "RAW JSON START: $json")
+            val data = Gson().fromJson(json, TranscriptResponse::class.java)
+
+            val sentences = flattenSentences(data)
+
+            timedTranscript = generateTimedSentences(
+                sentences,
+                story.duration // 🔥 use audio duration
+            )
+            Log.d("StoryDebug", "Loaded sentences: ${timedTranscript.size}")
+
+        } catch (e: Exception) {
+            Log.e("StoryDebug", "Transcript load failed", e)
+        }
+    }
+    //UI
+    LazyColumn(
+        state = listState,
         modifier = Modifier
             .fillMaxSize()
             .background(colors.background)
-            .verticalScroll(scrollState)
             .padding(16.dp)
     ) {
+        // ================= PLAYER CARD =================
+        item {
+            Card(
+                shape = RoundedCornerShape(22.dp),
+                colors = CardDefaults.cardColors(containerColor = colors.card),
+                modifier = Modifier.fillMaxWidth()
+            ) {
 
-        Card(
-            shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = colors.card),
-            modifier = Modifier.fillMaxWidth()
-        ) {
+                Column(modifier = Modifier.padding(20.dp)) {
 
-            Column(modifier = Modifier.padding(20.dp)) {
-
-                Text(
-                    text = story.title,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.heading
-                )
-                val formattedDate = remember {
-                    try {
-                        val instant = java.time.Instant.parse(story.createdAt)
-                        val date = java.util.Date.from(instant)
-                        java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
-                            .format(date)
-                    } catch (e: Exception) {
-                        "Unknown date"
+                    Text(
+                        text = story.title,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.heading
+                    )
+                    val formattedDate = remember {
+                        try {
+                            val instant = java.time.Instant.parse(story.createdAt)
+                            val date = java.util.Date.from(instant)
+                            java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
+                                .format(date)
+                        } catch (e: Exception) {
+                            "Unknown date"
+                        }
                     }
-                }
 
-                Text(
-                    text = "Uploaded on $formattedDate",
-                    fontSize = 13.sp,
-                    color = colors.muted
-                )
+                    Text(
+                        text = "Uploaded on $formattedDate",
+                        fontSize = 13.sp,
+                        color = colors.muted
+                    )
 
-                Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                Card(
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = colors.background.copy(alpha = 0.35f)
-                    ),
-                    border = BorderStroke(1.dp, Color.LightGray.copy(.25f))
-                ) {
-
-                    Column(
-                        modifier = Modifier.padding(18.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = colors.background.copy(alpha = 0.35f)
+                        ),
+                        border = BorderStroke(1.dp, Color.LightGray.copy(.25f))
                     ) {
 
-                        // PROGRESS BAR
-
-                        Slider(
-                            value = if (mediaPlayer != null && isReady) {
-                                currentPosition / mediaPlayer!!.duration
-                            } else 0f,
-                            onValueChange = {
-                                if(!isReady) return@Slider
-                                mediaPlayer?.seekTo((it * mediaPlayer!!.duration).toInt())
-                            },
-                            colors = SliderDefaults.colors(
-                                // We make both tracks the same light color to match the image
-                                activeTrackColor = Color.LightGray.copy(alpha = 0.3f),
-                                inactiveTrackColor = Color.LightGray.copy(alpha = 0.3f),
-                                // This hides the default solid thumb so our custom one shows
-                                thumbColor = Color.Transparent
-                            ),
-                            thumb = {
-                                // Custom hollow circle thumb
-                                Surface(
-                                    modifier = Modifier.size(20.dp),
-                                    shape = CircleShape,
-                                    color = Color.White,
-                                    border = BorderStroke(2.dp, Color.Gray) // The dark ring
-                                ) {}
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(formatDuration((currentPosition /1000).toDouble()), fontSize = 12.sp, color = colors.muted)
-                            Text(formatDuration(story.duration), fontSize = 12.sp, color = colors.muted)
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        // CONTROLS
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(28.dp)
-                        ) {
-
-                            Icon(
-                                imageVector = Icons.Outlined.SkipPrevious,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(30.dp)
-                                    .clickable { },
-                                tint = colors.muted
-                            )
-
-                            // PLAY BUTTON
-
-                            Box(
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .background(colors.accent, CircleShape)
-                                    .clickable {
-                                        mediaPlayer?.let { player ->
-                                            if(!isReady) return@clickable
-                                            if (player.isPlaying) {
-                                                player.pause()
-                                                isPlaying = false
-                                            } else {
-                                                player.start()
-                                                isPlaying = true
-                                            }
-                                        }
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = if (isPlaying)
-                                        Icons.Outlined.Pause
-                                    else
-                                        Icons.Outlined.PlayArrow,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(36.dp)
-                                )
-                            }
-
-
-
-                            Icon(
-                                imageVector = Icons.Outlined.SkipNext,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(30.dp)
-                                    .clickable { },
-                                tint = colors.muted
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        // SPEED
-
                         Column(
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.padding(18.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
 
-                            Text(
-                                text = "Playback Speed: 1x",
-                                fontSize = 13.sp,
-                                color = colors.muted
+                            // PROGRESS BAR
+
+                            Slider(
+                                value = if (mediaPlayer != null && isReady && mediaPlayer!!.duration > 0) {
+                                    currentPosition / mediaPlayer!!.duration
+                                } else 0f,
+                                onValueChange = {
+                                    if (!isReady) return@Slider
+                                    mediaPlayer?.seekTo((it * mediaPlayer!!.duration).toInt())
+                                },
+                                colors = SliderDefaults.colors(
+                                    // We make both tracks the same light color to match the image
+                                    activeTrackColor = Color.LightGray.copy(alpha = 0.3f),
+                                    inactiveTrackColor = Color.LightGray.copy(alpha = 0.3f),
+                                    // This hides the default solid thumb so our custom one shows
+                                    thumbColor = Color.Transparent
+                                ),
+                                thumb = {
+                                    // Custom hollow circle thumb
+                                    Surface(
+                                        modifier = Modifier.size(20.dp),
+                                        shape = CircleShape,
+                                        color = Color.White,
+                                        border = BorderStroke(2.dp, Color.Gray) // The dark ring
+                                    ) {}
+                                },
+                                modifier = Modifier.fillMaxWidth()
                             )
 
-                            Spacer(modifier = Modifier.height(10.dp))
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp), // Adjusted spacing
-                                verticalAlignment = Alignment.CenterVertically
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    formatDuration((currentPosition / 1000).toDouble()),
+                                    fontSize = 12.sp,
+                                    color = colors.muted
+                                )
+                                Text(
+                                    formatDuration(story.duration),
+                                    fontSize = 12.sp,
+                                    color = colors.muted
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            // CONTROLS
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(28.dp)
                             ) {
 
-                                listOf(
-                                    "0.5x",
-                                    "0.75x",
-                                    "1x",
-                                    "1.25x",
-                                    "1.5x",
-                                    "2x"
-                                ).forEach { speed ->
+                                Icon(
+                                    imageVector = Icons.Outlined.SkipPrevious,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(30.dp)
+                                        .clickable { },
+                                    tint = colors.muted
+                                )
 
-                                    val selected = speed == "1x"
+                                // PLAY BUTTON
 
-                                    Box(
-                                        modifier = Modifier
-                                            .border(
-                                                1.dp,
-                                                if (selected) colors.accent else Color.Gray,
-                                                RoundedCornerShape(6.dp)
+                                Box(
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .background(colors.accent, CircleShape)
+                                        .clickable {
+                                            mediaPlayer?.let { player ->
+                                                if (!isReady) return@clickable
+                                                if (player.isPlaying) {
+                                                    player.pause()
+                                                    isPlaying = false
+                                                } else {
+                                                    player.start()
+                                                    isPlaying = true
+                                                }
+                                            }
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (isPlaying)
+                                            Icons.Outlined.Pause
+                                        else
+                                            Icons.Outlined.PlayArrow,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                }
+
+
+
+                                Icon(
+                                    imageVector = Icons.Outlined.SkipNext,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(30.dp)
+                                        .clickable { },
+                                    tint = colors.muted
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            // SPEED
+
+                            Column(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+
+                                Text(
+                                    text = "Playback Speed: 1x",
+                                    fontSize = 13.sp,
+                                    color = colors.muted
+                                )
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp), // Adjusted spacing
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+
+                                    listOf(
+                                        "0.5x",
+                                        "0.75x",
+                                        "1x",
+                                        "1.25x",
+                                        "1.5x",
+                                        "2x"
+                                    ).forEach { speed ->
+
+                                        val selected = speed == "1x"
+
+                                        Box(
+                                            modifier = Modifier
+                                                .border(
+                                                    1.dp,
+                                                    if (selected) colors.accent else Color.Gray,
+                                                    RoundedCornerShape(6.dp)
+                                                )
+                                                .background(
+                                                    if (selected) colors.accent else Color.Transparent,
+                                                    RoundedCornerShape(6.dp)
+                                                )
+                                                .clickable { }
+                                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        ) {
+
+                                            Text(
+                                                text = speed,
+                                                fontSize = 10.sp,
+                                                color = if (selected) Color.White else colors.heading
                                             )
-                                            .background(
-                                                if (selected) colors.accent else Color.Transparent,
-                                                RoundedCornerShape(6.dp)
-                                            )
-                                            .clickable { }
-                                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                                    ) {
 
-                                        Text(
-                                            text = speed,
-                                            fontSize = 10.sp,
-                                            color = if (selected) Color.White else colors.heading
-                                        )
-
+                                        }
                                     }
                                 }
                             }
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            // VOLUME
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+
+                                Icon(
+                                    imageVector = Icons.Outlined.VolumeUp,
+                                    contentDescription = null,
+                                    tint = colors.muted,
+                                    modifier = Modifier.size(20.dp)
+                                )
+
+                                val sliderColors = SliderDefaults.colors(
+                                    activeTrackColor = colors.accent,
+                                    inactiveTrackColor = Color.LightGray.copy(alpha = 0.4f),
+                                    thumbColor = Color.Transparent
+                                )
+
+                                Slider(
+                                    value = volume,
+                                    onValueChange = {
+                                        volume = it
+                                        mediaPlayer?.setVolume(it, it)
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(horizontal = 8.dp),
+                                    colors = sliderColors,
+                                    thumb = {
+                                        Surface(
+                                            modifier = Modifier.size(18.dp),
+                                            shape = CircleShape,
+                                            color = Color.White,
+                                            border = BorderStroke(
+                                                1.5.dp,
+                                                Color.DarkGray.copy(alpha = 0.7f)
+                                            )
+                                        ) {}
+                                    },
+                                    track = { sliderState ->
+                                        SliderDefaults.Track(
+                                            sliderState = sliderState,
+                                            modifier = Modifier.height(4.dp),
+                                            colors = sliderColors, // Pass the colors object here instead of individual colors
+                                            enabled = true
+                                        )
+                                    }
+                                )
+                                Text(
+                                    text = "${(volume * 100).toInt()}%",
+                                    fontSize = 12.sp,
+                                    color = colors.muted
+                                )
+                            }
+
                         }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        // VOLUME
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-
-                            Icon(
-                                imageVector = Icons.Outlined.VolumeUp,
-                                contentDescription = null,
-                                tint = colors.muted,
-                                modifier = Modifier.size(20.dp)
-                            )
-
-                            val sliderColors = SliderDefaults.colors(
-                                activeTrackColor = colors.accent,
-                                inactiveTrackColor = Color.LightGray.copy(alpha = 0.4f),
-                                thumbColor = Color.Transparent
-                            )
-
-                            Slider(
-                                value = volume,
-                                onValueChange = {
-                                    volume = it
-                                    mediaPlayer?.setVolume(it, it)
-                                },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(horizontal = 8.dp),
-                                colors = sliderColors,
-                                thumb = {
-                                    Surface(
-                                        modifier = Modifier.size(18.dp),
-                                        shape = CircleShape,
-                                        color = Color.White,
-                                        border = BorderStroke(1.5.dp, Color.DarkGray.copy(alpha = 0.7f))
-                                    ) {}
-                                },
-                                track = { sliderState ->
-                                    SliderDefaults.Track(
-                                        sliderState = sliderState,
-                                        modifier = Modifier.height(4.dp),
-                                        colors = sliderColors, // Pass the colors object here instead of individual colors
-                                        enabled = true
-                                    )
-                                }
-                            )
-                            Text(
-                                text = "${(volume * 100).toInt()}%",
-                                fontSize = 12.sp,
-                                color = colors.muted
-                            )
-                        }
-
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+
         }
+        // ================= TRANSCRIPT =================
+        itemsIndexed(timedTranscript) { index, sentence ->
 
-        Spacer(modifier = Modifier.height(24.dp))
+            val isCurrent = index == currentSentenceIndex
 
-        // STORY CARD
-
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = colors.card),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-
-            Column(modifier = Modifier.padding(20.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
 
                 Text(
-                    text = "Story Content",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.heading
+                    text = sentence.speaker,
+                    fontSize = 12.sp,
+                    color = Color.Gray
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
-
                 Text(
-                    text = story.description,
-                    fontSize = 16.sp,
-                    lineHeight = 24.sp,
-                    color = colors.text
+                    text = sentence.text,
+                    fontSize = if (isCurrent) 18.sp else 15.sp,
+                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isCurrent) colors.accent else colors.text,
+                    modifier = Modifier.background(
+                        if (isCurrent) colors.accent.copy(alpha = 0.08f)
+                        else Color.Transparent
+                    )
+                        .padding(6.dp)
                 )
             }
         }
-        Spacer(modifier = Modifier.height(50.dp))
+
+        item {
+            Spacer(modifier = Modifier.height(20.dp))
+            // STORY CARD
+
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = colors.card),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+
+                Column(modifier = Modifier.padding(20.dp)) {
+
+                    Text(
+                        text = "Story Content",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.heading
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = story.description,
+                        fontSize = 16.sp,
+                        lineHeight = 24.sp,
+                        color = colors.text
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(50.dp))
+        }
     }
 }
 fun formatDuration(seconds: Double): String {

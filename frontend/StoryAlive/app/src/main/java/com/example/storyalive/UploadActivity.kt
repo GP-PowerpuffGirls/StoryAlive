@@ -121,7 +121,7 @@ fun UploadScreen(
             result.data?.getStringExtra("NEW_VOICE_ACTOR")?.let { json ->
                 val newActor = Gson().fromJson(json, VoiceActorRequest::class.java)
                 actors = (actors + newActor).sortedWith(
-                    compareByDescending<VoiceActorRequest> { it.private }.thenBy { it.actorName }
+                    compareByDescending<VoiceActorRequest> { it.isPrivate }.thenBy { it.actorName }
                 )
             }
         }
@@ -137,7 +137,7 @@ fun UploadScreen(
                 if(response.isSuccessful){
                     val body =response.body()
                     val newActors = body?.content?:emptyList()
-                    actors = (actors + newActors).sortedWith(compareByDescending<VoiceActorRequest> { it.private }.thenBy { it.actorName })
+                    actors = (actors + newActors).sortedWith(compareByDescending<VoiceActorRequest> { it.isPrivate }.thenBy { it.actorName })
                     hasMoreActors = page < (body?.totalPages ?: 1) - 1
                 }
             }catch (e: Exception) {
@@ -291,7 +291,7 @@ fun UploadScreen(
                         try {
                             val story = RetrofitClient.createApi(context).createStory(pdfPart, storyRequestBody)
 
-                            Toast.makeText(context, "Processing Done ✅", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Upload Done ✅", Toast.LENGTH_SHORT).show()
 
                             val gson = Gson()
                             val storyJson = gson.toJson(story)
@@ -528,7 +528,7 @@ fun VoiceActorCard(
                                     fontSize = 12.sp,
                                     color = colors.text
                                 )
-                                if (actor.private) {
+                                if (actor.isPrivate) {
                                     Surface(
                                         color = colors.accent,
                                         shape = RoundedCornerShape(8.dp)

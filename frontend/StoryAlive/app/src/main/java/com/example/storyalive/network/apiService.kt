@@ -1,6 +1,5 @@
 package com.example.storyalive.network
 
-import Story
 import com.example.storyalive.model.AuthResponse
 import com.example.storyalive.model.PagedResponse
 import com.example.storyalive.model.PagedResponses
