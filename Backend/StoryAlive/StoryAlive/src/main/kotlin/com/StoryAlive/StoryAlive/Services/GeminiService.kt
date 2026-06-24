@@ -233,7 +233,7 @@ class GeminiService(
         return "prosody::$name::$emotion::$intensity"
     }
 
-    fun extractStory(pdfBytes: ByteArray): StoryScript{
+    fun extractStory(pdfBytes: ByteArray): String{
         log.info("Starting Gemini extraction")
         log.info("PDF size: {} bytes", pdfBytes.size)
         val pdfBase64 = Base64.getEncoder().encodeToString(pdfBytes)
@@ -386,7 +386,10 @@ Return JSON only.
             geminiStory.cast.size,
             geminiStory.chapters.size
         )
-        return buildFinalOutput(geminiStory)
+        val storyScript= buildFinalOutput(geminiStory)
+        return objectMapper
+            .writerWithDefaultPrettyPrinter()
+            .writeValueAsString(storyScript)
     }
     fun buildFinalOutput(gemini: GeminiStory): StoryScript {
         log.info("Building final StoryScript")
