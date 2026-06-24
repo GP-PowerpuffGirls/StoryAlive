@@ -61,7 +61,7 @@ class TTSService(@Value("\${TTS_MODEL_URL2}") private val modelUrl: String) {
         }
     }
 
-    fun updateStoryAudio(storyDto: StoryCreationDTO, sentenceId: ObjectId, requestStoryUpdateDTO: RequestStoryUpdateDTO): TTSResponse {
+    fun updateStoryAudio(storyDto: StoryCreationDTO, sentenceId: String, requestStoryUpdateDTO: RequestStoryUpdateDTO): TTSResponse {
 
         val taskId = getUpdateTaskId(
             storyDto,
@@ -206,11 +206,11 @@ class TTSService(@Value("\${TTS_MODEL_URL2}") private val modelUrl: String) {
         return postJson.get("task_id").asText()
     }
 
-    private fun getUpdateTaskId(storyDto: StoryCreationDTO, sentenceId: ObjectId, request: RequestStoryUpdateDTO): String {
+    private fun getUpdateTaskId(storyDto: StoryCreationDTO, sentenceId: String, request: RequestStoryUpdateDTO): String {
 
         val payload = UpdateStoryAudioRequestDTO(
             story = storyDto,
-            sentenceId = sentenceId.toHexString(),
+            sentenceId = sentenceId,
             emotion = request.emotion,
             intensity = request.intensity
         )
