@@ -27,7 +27,6 @@ data class GeminiScene(
 
 data class GeminiLocation(
     val locationName: String?,
-    val sfx: String?,
     val path: String?
 )
 

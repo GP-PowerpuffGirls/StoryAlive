@@ -32,7 +32,6 @@ data class Sentence(
 )
 data class Location(
     val locationName: String,
-    val sfx: String,
     val path: String
 )
 data class BgMusic(

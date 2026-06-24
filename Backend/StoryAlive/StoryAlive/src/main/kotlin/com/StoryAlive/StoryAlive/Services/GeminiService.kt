@@ -10,6 +10,7 @@ import com.StoryAlive.StoryAlive.DTOs.Story.Scene
 import com.StoryAlive.StoryAlive.DTOs.Story.Sentence
 import com.StoryAlive.StoryAlive.DTOs.Story.StoryScript
 import com.StoryAlive.StoryAlive.GeminiConfig
+import com.StoryAlive.StoryAlive.HttpClientConfig
 import com.fasterxml.jackson.databind.ObjectMapper
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -133,19 +134,10 @@ class GeminiService(
                                                 "type" to "string",
                                                 "enum" to LOCATION_ENUMS
                                             ),
-                                            "sfx" to mapOf(
-                                                "type" to "string",
-                                                "enum" to listOf(
-                                                    "BIRD_SONG",
-                                                    "STORM",
-                                                    "RAIN",
-                                                    "NONE"
-                                                )
-                                            ),
 
                                             "path" to mapOf("type" to "string")
                                         ),
-                                        "required" to listOf("locationName","sfx","path")
+                                        "required" to listOf("locationName","path")
                                     ),
 
                                     "scene_emotion" to mapOf(
@@ -265,7 +257,7 @@ Return ONLY the enum keys, NOT Arabic words.
 If location cannot be mapped → use NONE
 IMPORTANT RULE:
 If a sentence describes an action, feeling, or scene (NOT spoken words),
-it MUST be assigned to the narrator "راوي" with emotion = NARRATION.
+it MUST be assigned to the narrator "راوي" with emotion = NARRATION and gender = MALE.
 
 Example:
 "اتنهّدت حبيبة بهدوء"
@@ -302,12 +294,14 @@ CREATURE = animal or fantasy creature
 MONSTER = monster
 NONE = unknown
 
-For every scene provide an sfx value.
-Examples:
-Park with birds → BIRD_SONG
-Rainy weather → RAIN
-Thunderstorm → STORM
-Otherwise → NONE
+IMPORTANT:
+Every cast member must have a preferredRole other than NONE whenever possible.
+
+The narrator "راوي" must always have preferredRole=NARRATOR.
+
+Choose exactly one PROTAGONIST whenever the story has a central character.
+
+Use SIDE_CHARACTER instead of NONE for supporting characters.
 
 Arabic story:
 {text}
@@ -422,7 +416,7 @@ Return JSON only.
                 name = "راوي",
                 gender = "MALE",
                 isAdult = true,
-                preferredRole ="NONE",
+                preferredRole ="NARRATOR",
                 voiceReference = makeVoiceRef("راوي")
             )
         }
@@ -509,7 +503,7 @@ Return JSON only.
                 if (sentences.isEmpty()) return@forEachIndexed
 
                 val location =
-                    scene.location ?: GeminiLocation("NONE", "NONE","")
+                    scene.location ?: GeminiLocation("NONE", "")
 
                 val locationName =
                     arabicToEnum[location.locationName]
@@ -522,7 +516,6 @@ Return JSON only.
                     sceneId = sceneIndex + 1,
                     location = Location(
                         locationName = locationName,
-                        sfx = location.sfx ?: "NONE",
                         path = location.path ?: ""
                     ),
                     bgMusic = BgMusic(

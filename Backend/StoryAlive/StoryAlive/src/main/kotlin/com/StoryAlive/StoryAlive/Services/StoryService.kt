@@ -24,10 +24,11 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
+import java.time.Instant
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.forEach
-
+import java.time.Duration
 
 @Service
 class StoryService(private val storyRepo: StoryRepo,
@@ -72,6 +73,7 @@ class StoryService(private val storyRepo: StoryRepo,
 
     fun createStory(storyRequest: StoryRequestDTO, pdf: MultipartFile): Story {
         val user = userService.getUser()
+        val starttime= Instant.now()
         println("starting LLM task!")
 //        val jsonString = llmService.generateStoryFromPdf(pdf.bytes)
         val jsonString = geminiService.extractStory(pdf.bytes)
@@ -101,7 +103,7 @@ class StoryService(private val storyRepo: StoryRepo,
         println("generating story finished")
 
         println("saving to cloud")
-        val updatedJson = mapper.writeValueAsString(storyDto)
+        val updatedJson = mapper.writeValueAsString(ttsResponse.storyCreationDTO)
         val jsonPath = supabaseStorageService.saveJsonToCloud(updatedJson, user.userId)
         val pdfPath = supabaseStorageService.savePdfToCloud(pdf, user.userId )
         println("done")
@@ -113,6 +115,10 @@ class StoryService(private val storyRepo: StoryRepo,
         user.totalStoriesCount+=1
         user.totalPublishedStoriesCount+=1
         userService.saveUser(user)
+        val endtime= Instant.now()
+        val wholeTime = Duration.between(starttime, endtime)
+
+        println("time taken:$wholeTime");
         return storyRepo.save(currentStory)
     }
 
@@ -162,9 +168,6 @@ class StoryService(private val storyRepo: StoryRepo,
         currentStory.modifiedAt = java.time.Instant.now()
 
         val savedStory = storyRepo.save(currentStory)
-
-        supabaseStorageService.deleteFileFromSupabase(oldJsonPath)
-
         return savedStory
     }
 
@@ -267,7 +270,7 @@ class StoryService(private val storyRepo: StoryRepo,
             .groupBy { VoiceActorKey(it.isAdult, it.gender, it.preferredRole) }
             .mapValues { it.value.map { actor -> actor.voiceActorId to actor.actorName }.toMutableList() }
             .toMutableMap()
-        println("actors map: $actorsMap" )
+//        println("actors map: $actorsMap" )
 
         // Assign user-selected actors first
         val mutableVoiceActors = currentStory.voiceActors.toMutableMap()
@@ -278,7 +281,7 @@ class StoryService(private val storyRepo: StoryRepo,
             actorsMap[key]?.removeIf { it.first == actorId }
             mutableVoiceActors[actorId] = pair
         }
-        println("entire cast: ${storyDto.cast}")
+//        println("entire cast: ${storyDto.cast}")
         // Assign remaining actors to cast members
         storyDto.cast.forEach { castMember ->
             if (castMember.name == "راوي") {
@@ -290,8 +293,8 @@ class StoryService(private val storyRepo: StoryRepo,
             val key = VoiceActorKey(castMember.isAdult, castMember.gender, castMember.preferredRole)
             val availableActors = actorsMap[key]
                 ?: throw RuntimeException("No available actor for cast member ${castMember.name} with $key")
-            println("cast member: $castMember")
-            println("available actors while mapping to cast: $availableActors")
+//            println("cast member: $castMember")
+//            println("available actors while mapping to cast: $availableActors")
             val selectedActor = availableActors.removeAt(0)
             mutableVoiceActors[selectedActor.first] = selectedActor.second to castMember.name
         }
