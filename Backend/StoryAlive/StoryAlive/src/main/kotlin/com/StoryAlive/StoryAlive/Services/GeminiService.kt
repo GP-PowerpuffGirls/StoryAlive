@@ -1,6 +1,14 @@
 package com.StoryAlive.StoryAlive.Services
 
-import Story
+import com.StoryAlive.StoryAlive.DTOs.Story.BgMusic
+import com.StoryAlive.StoryAlive.DTOs.Story.Cast
+import com.StoryAlive.StoryAlive.DTOs.Story.Chapter
+import com.StoryAlive.StoryAlive.DTOs.Story.GeminiLocation
+import com.StoryAlive.StoryAlive.DTOs.Story.GeminiStory
+import com.StoryAlive.StoryAlive.DTOs.Story.Location
+import com.StoryAlive.StoryAlive.DTOs.Story.Scene
+import com.StoryAlive.StoryAlive.DTOs.Story.Sentence
+import com.StoryAlive.StoryAlive.DTOs.Story.StoryScript
 import com.StoryAlive.StoryAlive.GeminiConfig
 import com.fasterxml.jackson.databind.ObjectMapper
 import okhttp3.OkHttpClient
@@ -8,6 +16,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.springframework.stereotype.Service
 import java.util.Base64
 import okhttp3.MediaType.Companion.toMediaType
+import org.slf4j.LoggerFactory
+
 
 @Service
 class GeminiService(
@@ -15,6 +25,7 @@ class GeminiService(
     private val client: OkHttpClient,
     private val objectMapper: ObjectMapper
 ) {
+    private val log = LoggerFactory.getLogger(GeminiService::class.java)
     private val LOCATION_ENUMS = listOf(
         "COFFEE_SHOP",
         "STREET",
@@ -34,6 +45,25 @@ class GeminiService(
         "STORM",
         "RAIN",
         "NONE"
+    )
+    private val arabicToEnum = mapOf(
+        "مقهى" to "COFFEE_SHOP",
+        "شارع" to "STREET",
+        "مستشفى" to "HOSPITAL",
+        "بيت" to "HOME",
+        "حديقة" to "PARK",
+        "شاطئ" to "BEACH",
+        "بحر" to "SEA",
+        "كرونيش" to "CORNICHE",
+        "جامعة" to "UNIVERSITY",
+        "مول" to "MALL",
+        "مسجد" to "MOSQUE",
+        "كنيسة" to "CHURCH",
+        "سوق" to "MARKET",
+        "الشرطة" to "POLICE_STATION",
+        "صوت طيور" to "BIRD_SONG",
+        "عاصفة" to "STORM",
+        "مطر" to "RAIN"
     )
     private val schema: Map<String, Any> = mapOf(
 
@@ -55,9 +85,29 @@ class GeminiService(
 
                         "isAdult" to mapOf("type" to "boolean"),
 
-                        "evidence" to mapOf("type" to "string")
+                        "evidence" to mapOf("type" to "string"),
+                        "preferredRole" to mapOf(
+                            "type" to "string",
+                            "enum" to listOf(
+                                "NARRATOR",
+                                "PROTAGONIST",
+                                "ANTAGONIST",
+                                "SIDE_CHARACTER",
+                                "COMIC_RELIEF",
+                                "LOVE_INTEREST",
+                                "MENTOR",
+                                "HERO",
+                                "VILLAIN",
+                                "TEEN_CHARACTER",
+                                "ADULT_CHARACTER",
+                                "ELDERLY_CHARACTER",
+                                "CREATURE",
+                                "MONSTER",
+                                "NONE"
+                            )
+                        )
                     ),
-                    "required" to listOf("name_ar", "gender", "isAdult")
+                    "required" to listOf("name_ar", "gender", "isAdult","preferredRole")
                 )
             ),
 
@@ -83,10 +133,19 @@ class GeminiService(
                                                 "type" to "string",
                                                 "enum" to LOCATION_ENUMS
                                             ),
+                                            "sfx" to mapOf(
+                                                "type" to "string",
+                                                "enum" to listOf(
+                                                    "BIRD_SONG",
+                                                    "STORM",
+                                                    "RAIN",
+                                                    "NONE"
+                                                )
+                                            ),
 
                                             "path" to mapOf("type" to "string")
                                         ),
-                                        "required" to listOf("locationName", "path")
+                                        "required" to listOf("locationName","sfx","path")
                                     ),
 
                                     "scene_emotion" to mapOf(
@@ -162,11 +221,23 @@ class GeminiService(
             "chapters"
         )
     )
+    private fun makeVoiceRef(name: String): String {
+        return "voice::$name"
+    }
 
-    fun extractStory(pdfBytes: ByteArray): Story{
+    private fun makeProsodyRef(
+        name: String,
+        emotion: String,
+        intensity: String
+    ): String {
+        return "prosody::$name::$emotion::$intensity"
+    }
 
+    fun extractStory(pdfBytes: ByteArray): StoryScript{
+        log.info("Starting Gemini extraction")
+        log.info("PDF size: {} bytes", pdfBytes.size)
         val pdfBase64 = Base64.getEncoder().encodeToString(pdfBytes)
-
+        log.info("PDF converted to Base64")
         val prompt = """
 You are a cinematic story understanding engine.
 
@@ -213,12 +284,37 @@ IMPORTANT:
 Every speaker that appears in segments MUST also appear in the cast array.
 Do not omit any character.
 
+Determine the preferredRole for every character.
+
+NARRATOR = story narrator
+PROTAGONIST = main hero
+ANTAGONIST = main opponent
+SIDE_CHARACTER = supporting character
+COMIC_RELIEF = funny character
+LOVE_INTEREST = romantic interest
+MENTOR = guide or teacher
+HERO = heroic figure
+VILLAIN = evil figure
+TEEN_CHARACTER = teenager
+ADULT_CHARACTER = adult
+ELDERLY_CHARACTER = old person
+CREATURE = animal or fantasy creature
+MONSTER = monster
+NONE = unknown
+
+For every scene provide an sfx value.
+Examples:
+Park with birds → BIRD_SONG
+Rainy weather → RAIN
+Thunderstorm → STORM
+Otherwise → NONE
+
 Arabic story:
 {text}
 
 Return JSON only.
 """.trimIndent()
-
+        log.info("Sending request to Gemini")
         val requestMap = mapOf(
             "contents" to listOf(
                 mapOf(
@@ -250,12 +346,21 @@ Return JSON only.
             .build()
 
         val response = client.newCall(request).execute()
-
+        log.info("Gemini response code: {}", response.code)
         if (!response.isSuccessful) {
-            throw RuntimeException("Gemini failed: ${response.code} ${response.body?.string()}")
+            val errorBody = response.body?.string()
+            log.error(
+                "Gemini request failed. Code={}, Body={}",
+                response.code,
+                errorBody
+            )
+            throw RuntimeException("Gemini failed: ${response.code} $errorBody")
         }
         val responseText = response.body?.string()
-
+        log.debug(
+            "Raw Gemini response (first 1000 chars): {}",
+            responseText?.take(1000)
+        )
         val root = objectMapper.readTree(responseText)
 
         val candidates = root.path("candidates")
@@ -269,9 +374,179 @@ Return JSON only.
             .path("parts")[0]
             .path("text")
             .asText()
+        log.info("Gemini JSON extracted")
+        log.debug("Gemini JSON: {}", text.take(2000))
+        val geminiStory =
+            objectMapper.readValue(
+                text,
+                GeminiStory::class.java
+            )
+        log.info(
+            "Parsed Gemini story successfully. Cast={}, Chapters={}",
+            geminiStory.cast.size,
+            geminiStory.chapters.size
+        )
+        return buildFinalOutput(geminiStory)
+    }
+    fun buildFinalOutput(gemini: GeminiStory): StoryScript {
+        log.info("Building final StoryScript")
+        val castMap = linkedMapOf<String, Cast>()
 
-        return objectMapper.readValue(text, Story::class.java)
+        gemini.cast.forEach { c ->
 
+            val name = c.name_ar ?: c.name?: return@forEach
+
+            if (!castMap.containsKey(name)) {
+                castMap[name] = Cast(
+                    name = name,
+                    gender = c.gender ?: "MALE",
+                    isAdult = c.isAdult ?: true,
+                    preferredRole = c.preferredRole ?: "NONE",
+                    voiceReference = makeVoiceRef(name)
+                )
+            } else {
+
+                if (c.isAdult == false) {
+                    castMap[name] =
+                        castMap[name]!!.copy(isAdult = false)
+                }
+            }
+        }
+
+        if (!castMap.containsKey("راوي")) {
+
+            castMap["راوي"] = Cast(
+                name = "راوي",
+                gender = "MALE",
+                isAdult = true,
+                preferredRole ="NONE",
+                voiceReference = makeVoiceRef("راوي")
+            )
+        }
+        log.info(
+            "Cast count after processing: {}",
+            castMap.size
+        )
+        val chaptersOutput = mutableListOf<Chapter>()
+
+        var globalSentenceId = 1
+
+        gemini.chapters.forEachIndexed { chapterIndex, chapter ->
+
+            val chapterId = chapterIndex + 1
+
+            val title = Sentence(
+                sentenceId = "t$chapterId",
+                speaker = "راوي",
+                sentence = chapter.chapter_title ?: "الفصل $chapterId",
+                emotion = "NARRATION",
+                intensity = "LOW",
+                prosodyReference =
+                    makeProsodyRef("راوي", "NARRATION", "LOW")
+            )
+            globalSentenceId++
+            val scenesOutput = mutableListOf<Scene>()
+
+            chapter.scenes.forEachIndexed { sceneIndex, scene ->
+
+                val sentences = mutableListOf<Sentence>()
+
+                scene.segments.forEach { segment ->
+
+                    var speaker = segment.speaker ?: "راوي"
+
+                    if (
+                        speaker.equals("narration", true) ||
+                        speaker.equals("narrator", true)
+                    ) {
+                        speaker = "راوي"
+                    }
+
+                    if (!castMap.containsKey(speaker)) {
+
+                        castMap[speaker] = Cast(
+                            name = speaker,
+                            gender = "MALE",
+                            isAdult = true,
+                            preferredRole = "NONE",
+                            voiceReference = makeVoiceRef(speaker)
+                        )
+                    }
+
+                    val emotion =
+                        segment.emotion ?: "NARRATION"
+
+                    var intensity =
+                        segment.intensity ?: "LOW"
+
+                    if (
+                        emotion == "NARRATION" ||
+                        emotion == "WHISPER"
+                    ) {
+                        intensity = "LOW"
+                    }
+
+                    sentences += Sentence(
+                        sentenceId = globalSentenceId.toString(),
+                        speaker = speaker,
+                        sentence = segment.sentence ?: "",
+                        emotion = emotion,
+                        intensity = intensity,
+                        prosodyReference =
+                            makeProsodyRef(
+                                speaker,
+                                emotion,
+                                intensity
+                            )
+                    )
+
+                    globalSentenceId++
+                }
+
+                if (sentences.isEmpty()) return@forEachIndexed
+
+                val location =
+                    scene.location ?: GeminiLocation("NONE", "NONE","")
+
+                val locationName =
+                    arabicToEnum[location.locationName]
+                        ?: if (LOCATION_ENUMS.contains(location.locationName))
+                            location.locationName!!
+                        else
+                            "NONE"
+
+                scenesOutput += Scene(
+                    sceneId = sceneIndex + 1,
+                    location = Location(
+                        locationName = locationName,
+                        sfx = location.sfx ?: "NONE",
+                        path = location.path ?: ""
+                    ),
+                    bgMusic = BgMusic(
+                        volume = 0.5,
+                        emotion = scene.scene_emotion ?: "PEACEFUL"
+                    ),
+                    sentences = sentences
+                )
+            }
+
+            chaptersOutput += Chapter(
+                chapterId = chapterId,
+                title = title,
+                scenes = scenesOutput
+            )
+
+        }
+        log.info(
+            "StoryScript built successfully. Cast={}, Chapters={}",
+            castMap.size,
+            chaptersOutput.size
+        )
+
+        return StoryScript(
+            cast = castMap.values.toList(),
+            chapters = chaptersOutput
+        )
     }
 
 }
