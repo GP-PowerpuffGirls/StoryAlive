@@ -122,7 +122,7 @@ class SupabaseStorageService(
     """.trimIndent().toRequestBody("application/json".toMediaType())
 
         val request = Request.Builder()
-            .url("$supabaseUrl/storage/v1/object/$bucket")
+            .url(fileUrl)
             .addHeader("Authorization", "Bearer $supabaseKey")
             .addHeader("apikey", supabaseKey)
             .delete(requestBody)
