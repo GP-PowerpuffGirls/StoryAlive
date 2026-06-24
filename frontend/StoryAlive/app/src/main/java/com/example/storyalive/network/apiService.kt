@@ -1,7 +1,8 @@
 package com.example.storyalive.network
 
-import Story
+import android.R
 import com.example.storyalive.model.AuthResponse
+import com.example.storyalive.model.EditSentenceRequest
 import com.example.storyalive.model.PagedResponse
 import com.example.storyalive.model.PagedResponses
 import com.example.storyalive.model.StoryRequestDTO
@@ -22,6 +23,7 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Query
+import retrofit2.http.Path
 
 interface ApiService {
 
@@ -109,4 +111,11 @@ interface ApiService {
         @Query("currentPassword") currentPassword: String,
         @Query("newPassword") newPassword: String
     ): Response<UserResponse>
+
+    @PUT("/stories/{storyId}/sentences/{sentenceId}")
+    suspend fun editSentence(
+        @Path("storyId") storyId: String,
+        @Path("sentenceId") sentenceId: String,
+        @Body request: EditSentenceRequest
+    ): StoryResponseDTO
 }
