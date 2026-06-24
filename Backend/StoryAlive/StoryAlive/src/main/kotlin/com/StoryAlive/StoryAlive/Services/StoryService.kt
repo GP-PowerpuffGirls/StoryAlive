@@ -37,7 +37,8 @@ class StoryService(private val storyRepo: StoryRepo,
                    private val voiceActorService: VoiceActorService,
                    private val bgMusicService: BGMusicService,
                    private val locationService: LocationService,
-                   private val userService: UserService) {
+                   private val userService: UserService,
+                   private val geminiService: GeminiService) {
     val mapper = jacksonObjectMapper()
 
     fun getAllStories(pageNumber: Int, pageSize: Int): Page<Story> {
@@ -54,7 +55,9 @@ class StoryService(private val storyRepo: StoryRepo,
     fun createStory(storyRequest: StoryRequestDTO, pdf: MultipartFile): Story {
         val userId = userService.getCurrrenctUser().getUserId()
         println("starting LLM task!")
-        val jsonString = llmService.generateStoryFromPdf(pdf.bytes)
+//        val jsonString = llmService.generateStoryFromPdf(pdf.bytes)
+        val jsonString = geminiService.extractStory(pdf.bytes)
+
         println("LLM task finished")
 
         val storyDto: StoryCreationDTO = mapper.readValue(jsonString, StoryCreationDTO::class.java)
