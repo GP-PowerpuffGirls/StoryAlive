@@ -298,7 +298,7 @@ fun SignUpScreen(
 
                             try {
 
-                                val response = RetrofitClient.api.signup(request)
+                                val response = RetrofitClient.createApi(context).signup(request)
 
                                 if (response.isSuccessful) {
 
@@ -356,7 +356,7 @@ fun SignUpScreen(
                 OutlinedButton(
                     onClick = {
                         context.startActivity(
-                            Intent(context, SignUpActivity::class.java)
+                            Intent(context, LoginActivity::class.java)
                         )
                     },
                     border = BorderStroke(2.dp, colors.accent),

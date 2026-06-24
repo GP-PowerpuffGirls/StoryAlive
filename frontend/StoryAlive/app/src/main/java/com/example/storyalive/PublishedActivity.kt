@@ -1,6 +1,8 @@
 package com.example.storyalive
 
+import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -9,8 +11,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -18,6 +22,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,9 +35,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.storyalive.components.StoryAliveTopBar
+import com.example.storyalive.model.StoryResponseDTO
+import com.example.storyalive.network.RetrofitClient
 import com.example.storyalive.ui.theme.StoryAliveTheme
 import com.example.storyalive.ui.theme.ThemeColors
 import com.example.storyalive.ui.theme.themeColors
+import com.google.gson.Gson
 
 class PublishedActivity : ComponentActivity() {
 
@@ -60,78 +68,92 @@ class PublishedActivity : ComponentActivity() {
         }
     }
 }
-
-data class PublishedStory(
-    val id: Int,
-    var title: String,
-    var description: String,
-    var genre: String,
-    var minAge: Int,
-    var tags: MutableList<String>,
-    var isPublic: Boolean,
-    val author: String,
-    val duration: String
-)
-
-val publishedGenres = listOf(
-    "Fantasy",
-    "Sci-Fi",
-    "Adventure",
-    "Drama",
-    "Comedy",
-    "Educational"
-)
-
-val publishedTags = listOf(
-    "Adventure",
-    "Magic",
-    "Space",
-    "Future",
-    "Friendship",
-    "Mystery",
-    "Inspirational"
-)
-
-val publishedStories = mutableStateListOf(
-
-    PublishedStory(
-        1,
-        "The Lost Kingdom",
-        "A magical adventure through an ancient land.",
-        "Fantasy",
-        10,
-        mutableListOf("Adventure", "Magic"),
-        true,
-        "Alice",
-        "15:20"
-    )
-)
-
 @Composable
 fun PublishedScreen(isLightTheme: Boolean) {
-
     val colors = themeColors(isLightTheme)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val api = remember { RetrofitClient.createApi(context) }
 
+    var stories by remember { mutableStateOf<List<StoryResponseDTO>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var isLoadingMore by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    var editingStory by remember { mutableStateOf<PublishedStory?>(null) }
-
+    var editingStory by remember { mutableStateOf<StoryResponseDTO?>(null) }
     var showFilterDialog by remember { mutableStateOf(false) }
     var filterGenre by remember { mutableStateOf("") }
     var filterTags by remember { mutableStateOf(listOf<String>()) }
+    var publishedGenres by remember { mutableStateOf(listOf<String>()) }
+    var publishedTags by remember { mutableStateOf(listOf<String>()) }
 
-    val filteredStories = publishedStories.filter { story ->
+    var currentPage by remember { mutableStateOf(0) }
+    var totalPages by remember { mutableStateOf(1) }
+    val gridState = rememberLazyGridState()
 
-        val matchesSearch =
-            story.title.contains(searchQuery, true) ||
-                    story.description.contains(searchQuery, true)
+    // Load enums once
+    LaunchedEffect(Unit) {
+        try {
+            val enums = api.getEnums()
+            publishedGenres = enums["genres"] ?: emptyList()
+            publishedTags = enums["tags"] ?: emptyList()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+    fun formatDuration(durationInHours: Double): String {
+        val totalSeconds = (durationInHours * 3600).toInt() // convert hours to seconds
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+        return "%02d:%02d".format(minutes, seconds)
+    }
 
-        val matchesGenre =
-            filterGenre.isEmpty() || story.genre == filterGenre
 
-        val matchesTags =
-            filterTags.isEmpty() || filterTags.any { story.tags.contains(it) }
+    // Function to load stories from backend with search/filter
+    suspend fun loadStoriesFromApi(page: Int) {
+        try {
+            isLoadingMore = true
+            val response = api.getStories(
+                page = page,
+                size = 10 // adjust page size as needed
+            )
 
-        story.isPublic && matchesSearch && matchesGenre && matchesTags
+            if (response.isSuccessful) {
+                val apiStories = response.body()?.content ?: emptyList()
+//
+                if (page == 0) {
+                    stories = apiStories
+                } else {
+                    stories = stories + apiStories
+                }
+
+                totalPages = response.body()?.totalPages ?: 1
+            }
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            isLoading = false
+            isLoadingMore = false
+        }
+    }
+
+    // Initial load
+    LaunchedEffect(searchQuery, filterGenre, filterTags) {
+        currentPage = 0
+        isLoading = true
+        stories = emptyList()
+        loadStoriesFromApi(0)
+    }
+
+
+    // Infinite scroll
+    LaunchedEffect(gridState) {
+        snapshotFlow { gridState.firstVisibleItemIndex }
+            .collect { index ->
+                if (!isLoadingMore && !isLoading && index >= stories.size - 3 && currentPage + 1 < totalPages) {
+                    currentPage++
+                    loadStoriesFromApi(currentPage)
+                }
+            }
     }
 
     Column(
@@ -141,79 +163,77 @@ fun PublishedScreen(isLightTheme: Boolean) {
             .padding(16.dp)
     ) {
 
-        Text(
-            "Published Stories",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = colors.heading
-        )
-
+        Text("Published Stories", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = colors.heading)
         Spacer(modifier = Modifier.height(6.dp))
-
-        Text(
-            "Discover stories from the community",
-            color = colors.muted
-        )
-
+        Text("Discover stories from the community", color = colors.muted)
         Spacer(modifier = Modifier.height(20.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-
+        // Search + Filter Row
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 label = { Text("Search stories") },
                 modifier = Modifier.weight(1f)
             )
-
-            IconButton(
-                onClick = { showFilterDialog = true }
-            ) {
-
-                Icon(
-                    imageVector = Icons.Default.FilterList,
-                    contentDescription = "Filter"
-                )
+            IconButton(onClick = { showFilterDialog = true }) {
+                Icon(Icons.Default.FilterList, contentDescription = "Filter")
             }
         }
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(1),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        if (isLoading && stories.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            LazyVerticalGrid(
+                state = gridState,
+                columns = GridCells.Fixed(1),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(stories) { story ->
+                    PublishedStoryCard(
+                        story = story,
+                        colors = colors,
+                        onPlay = {
+                            val storyJson = Gson().toJson(story)
 
-            items(filteredStories) { story ->
+                            val intent = Intent(context, StoryActivity::class.java).apply {
+                                putExtra("STORY_JSON", storyJson)
+                            }
 
-                PublishedStoryCard(
-                    story = story,
-                    colors = colors,
-                    onEdit = { editingStory = story },
-                    onDelete = { publishedStories.remove(story) }
-                )
+                            context.startActivity(intent)
+                        }
+                    )
+                }
+
+                if (isLoadingMore) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                }
             }
         }
     }
 
-    editingStory?.let {
-
-        EditPublishedStoryDialog(
-            story = it,
-            onDismiss = { editingStory = null }
-        )
-    }
-
+    // Filter dialog
     if (showFilterDialog) {
-
         FilterDialog(
             selectedGenre = filterGenre,
             selectedTags = filterTags,
+            publishedGenres = publishedGenres,
+            publishedTags = publishedTags,
             onApply = { genre, tags ->
-
                 filterGenre = genre
                 filterTags = tags
                 showFilterDialog = false
@@ -221,193 +241,145 @@ fun PublishedScreen(isLightTheme: Boolean) {
             onDismiss = { showFilterDialog = false }
         )
     }
+
+    // Edit dialog
+    editingStory?.let {
+        EditPublishedStoryDialog(
+            story = it,
+            publishedGenres = publishedGenres,
+            publishedTags = publishedTags,
+            onDismiss = { editingStory = null }
+        )
+    }
 }
 
 @Composable
 fun PublishedStoryCard(
-    story: PublishedStory,
     colors: ThemeColors,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
+    story: StoryResponseDTO,
+    onPlay: () -> Unit,
 ) {
+    val durationText = remember(story.duration) {
+       formatDuration(story.duration)
+    }
 
     Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight()
+            .clickable { onPlay() },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = colors.card)
+        colors = CardDefaults.cardColors(containerColor = colors.card),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
 
-        Column {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-            ) {
-
-                AsyncImage(
-                    model = "https://images.unsplash.com/photo-1544947950-fa07a98d237f",
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+                // Title
+                Text(
+                    story.title,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.heading
                 )
 
-                Surface(
-                    color = Color.Black.copy(.7f),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(10.dp)
-                ) {
+                Spacer(modifier = Modifier.height(4.dp))
 
-                    Text(
-                        "Public",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(6.dp)
-                    )
-                }
-            }
-
-            Column(modifier = Modifier.padding(16.dp)) {
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-
-                    Column {
-
-                        Text(
-                            story.title,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.heading
-                        )
-
-                        Text(
-                            "by ${story.author}",
-                            color = colors.muted,
-                            fontSize = 13.sp
-                        )
-                    }
-
-                    Row {
-
-                        Icon(
-                            Icons.Default.Edit,
-                            null,
-                            modifier = Modifier
-                                .size(20.dp)
-                                .clickable { onEdit() }
-                        )
-
-                        Spacer(modifier = Modifier.width(10.dp))
-
-                        Icon(
-                            Icons.Default.Delete,
-                            null,
-                            modifier = Modifier
-                                .size(20.dp)
-                                .clickable { onDelete() }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
+                // Description
                 Text(
                     story.description,
-                    color = colors.muted
+                    fontSize = 14.sp,
+                    color = colors.muted,
+                    modifier = Modifier.padding(vertical = 4.dp)
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row {
-
-                    story.tags.forEach {
-
-                        PublishTagChip(
-                            it,
-                            Color.LightGray.copy(.3f),
-                            colors.muted
-                        )
-
-                        Spacer(modifier = Modifier.width(6.dp))
+                // Tags
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    story.tags.forEach { tag ->
+                        TagChip(tag, colors.accent, Color.White)
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
+                // Info row: Duration & Age
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-
                     Row(verticalAlignment = Alignment.CenterVertically) {
-
                         Icon(
                             Icons.Outlined.AccessTime,
-                            null,
+                            contentDescription = null,
                             tint = colors.muted,
                             modifier = Modifier.size(16.dp)
                         )
-
                         Spacer(modifier = Modifier.width(4.dp))
-
-                        Text(
-                            story.duration,
-                            color = colors.muted,
-                            fontSize = 12.sp
-                        )
+                        Text(durationText, fontSize = 12.sp, color = colors.muted)
                     }
 
-                    Text(
-                        "Age ${story.minAge}+",
-                        fontSize = 12.sp,
-                        color = colors.muted
-                    )
+                    Text("Age ${story.minimumAge}+", fontSize = 12.sp, color = colors.muted)
                 }
+            }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Button(
-                    onClick = { },
-                    modifier = Modifier.fillMaxWidth()
+            // Private/Public badge overlay
+            Surface(
+                color = Color(0xFF2D2D2D).copy(alpha = 0.8f),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-
-                    Icon(Icons.Default.PlayArrow, null)
-
-                    Spacer(modifier = Modifier.width(6.dp))
-
-                    Text("Listen")
+                    Icon(
+                        imageVector = if (story.isPrivate) Icons.Outlined.Lock else Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        tint = Color(0xFFFFD700),
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (story.isPrivate) "Private" else "Public",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
     }
 }
-
 @Composable
 fun PublishTagChip(text: String, bgColor: Color, textColor: Color) {
 
     Surface(
         color = bgColor,
-        shape = RoundedCornerShape(6.dp)
+        shape = RoundedCornerShape(50) // 🔥 pill shape
     ) {
-
         Text(
             text,
             color = textColor,
             fontSize = 11.sp,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
         )
     }
 }
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FilterDialog(
     selectedGenre: String,
     selectedTags: List<String>,
+    publishedGenres: List<String>,
+    publishedTags: List<String>,
     onApply: (String, List<String>) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -491,15 +463,17 @@ fun FilterDialog(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun EditPublishedStoryDialog(
-    story: PublishedStory,
+    story: StoryResponseDTO,
+    publishedGenres: List<String>,
+    publishedTags: List<String>,
     onDismiss: () -> Unit
 ) {
     var title by remember { mutableStateOf(story.title) }
     var description by remember { mutableStateOf(story.description) }
     var genre by remember { mutableStateOf(story.genre) }
-    var age by remember { mutableStateOf(story.minAge.toString()) }
-    var selTags by remember { mutableStateOf(story.tags.toMutableList()) }
-    var isPublic by remember { mutableStateOf(story.isPublic) }
+    var age by remember { mutableStateOf(story.minimumAge.toString()) }
+    var selTags = remember { mutableStateListOf(*story.tags.toTypedArray()) }
+    var isPublic by remember { mutableStateOf(!story.isPrivate) }
 
     var expanded by remember { mutableStateOf(false) }
 
@@ -590,9 +564,9 @@ fun EditPublishedStoryDialog(
                 story.title = title
                 story.description = description
                 story.genre = genre
-                story.minAge = age.toIntOrNull() ?: story.minAge
-                story.tags = selTags
-                story.isPublic = isPublic
+                story.minimumAge  = age.toIntOrNull() ?: story.minimumAge
+                story.tags = selTags.toList()
+                story.isPrivate = !isPublic
                 onDismiss()
             }) {
                 Text("Save")

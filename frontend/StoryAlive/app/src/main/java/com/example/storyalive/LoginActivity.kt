@@ -110,7 +110,7 @@ fun LoginScreen(
             ) {
 
                 Text(
-                    text = "Welcome Back",
+                    text = "Welcome to StoryAlive",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                     color = colors.heading,
@@ -173,7 +173,7 @@ fun LoginScreen(
 
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
-                                val response = RetrofitClient.api.login(request)
+                                val response = RetrofitClient.createApi(context).login(request)
 
                                 if (response.isSuccessful) {
                                     val tokens = response.body()
@@ -181,8 +181,8 @@ fun LoginScreen(
                                     println("Refresh Token: ${tokens?.refreshToken}")
 
                                     context.getSharedPreferences("app_prefs", MODE_PRIVATE).edit()
-                                        .putString("access_token", tokens?.accessToken)
-                                        .putString("refresh_token", tokens?.refreshToken)
+                                        .putString("access_token", tokens?.accessToken?.trim() ?: "")
+                                        .putString("refresh_token", tokens?.refreshToken?.trim() ?: "")
                                         .apply()
 
                                     context.startActivity(Intent(context, UploadActivity::class.java))

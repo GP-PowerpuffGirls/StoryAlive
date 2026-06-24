@@ -24,7 +24,7 @@ val LightAccent = Color(0xFF3E54AC)
 // Dark theme colors
 val DarkBackground = Color(0xFF213C51)
 val DarkCard = Color(0xFF2A4A5E)
-val DarkText = Color(0xFFD1D5DB)
+val DarkText = Color(0xFF000000)
 val DarkHeading = Color.White
 val DarkMuted = Color(0xFF9CA3AF)
 val DarkAccent = Color(0xFFDDAED3)

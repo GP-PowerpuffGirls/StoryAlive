@@ -1,5 +1,6 @@
 package com.example.storyalive
 
+import android.media.MediaPlayer
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -37,6 +38,8 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -45,21 +48,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.storyalive.components.StoryAliveTopBar
+import com.example.storyalive.model.StoryRequestDTO
+import com.example.storyalive.model.StoryResponseDTO
 import com.example.storyalive.ui.theme.StoryAliveTheme
 import com.example.storyalive.ui.theme.themeColors
+import com.google.gson.Gson
+import androidx.compose.material.icons.outlined.Pause
 
 class StoryActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Retrieve data passed from HistoryActivity
-        val storyTitle = intent.getStringExtra("STORY_TITLE") ?: "Unknown Story"
-        val storyDate = intent.getStringExtra("STORY_DATE") ?: "Unknown Date"
+        val storyJson = intent.getStringExtra("STORY_JSON")
+        requireNotNull(storyJson)
+        val story = Gson().fromJson(storyJson, StoryResponseDTO::class.java)
 
         enableEdgeToEdge()
         setContent {
@@ -71,8 +79,7 @@ class StoryActivity : ComponentActivity() {
                         Column {
                             StoryAliveTopBar(selectedPage = "Published")
                             StoryDetailScreen(
-                                title = storyTitle,
-                                date = storyDate,
+                                story = story,
                                 isLightTheme = isLightTheme
                             )
                         }
@@ -86,8 +93,7 @@ class StoryActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StoryDetailScreen(
-    title: String,
-    date: String,
+    story: StoryResponseDTO,
     isLightTheme: Boolean = true
 ) {
 
@@ -96,7 +102,45 @@ fun StoryDetailScreen(
 
     var playbackPosition by remember { mutableFloatStateOf(0.15f) }
     var volume by remember { mutableFloatStateOf(0.8f) }
+    val context = LocalContext.current
+    var isReady by remember { mutableStateOf(false) }
+    var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
+    var isPlaying by remember { mutableStateOf(false) }
+    var currentPosition by remember { mutableFloatStateOf(0f) }
+    DisposableEffect(Unit) {
+        onDispose {
+            mediaPlayer?.release()
+        }
+    }
+    LaunchedEffect(mediaPlayer) {
+        while (true) {
+            mediaPlayer?.let {
+                if (it.isPlaying) {
+                    currentPosition = it.currentPosition.toFloat()
+                }
+            }
+            kotlinx.coroutines.delay(500)
+        }
+    }
+    LaunchedEffect(Unit) {
+        try {
+            mediaPlayer = MediaPlayer().apply {
+                setAudioStreamType(android.media.AudioManager.STREAM_MUSIC)
+                setDataSource(story.finalAudioPath) // 🔥 your backend audio
+                prepareAsync()
 
+                setOnPreparedListener {
+                    isReady=true
+                }
+
+                setOnCompletionListener {
+                    isPlaying = false
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -114,14 +158,24 @@ fun StoryDetailScreen(
             Column(modifier = Modifier.padding(20.dp)) {
 
                 Text(
-                    text = title,
+                    text = story.title,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = colors.heading
                 )
+                val formattedDate = remember {
+                    try {
+                        val instant = java.time.Instant.parse(story.createdAt)
+                        val date = java.util.Date.from(instant)
+                        java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
+                            .format(date)
+                    } catch (e: Exception) {
+                        "Unknown date"
+                    }
+                }
 
                 Text(
-                    text = "Uploaded on $date",
+                    text = "Uploaded on $formattedDate",
                     fontSize = 13.sp,
                     color = colors.muted
                 )
@@ -144,8 +198,13 @@ fun StoryDetailScreen(
                         // PROGRESS BAR
 
                         Slider(
-                            value = playbackPosition,
-                            onValueChange = { playbackPosition = it },
+                            value = if (mediaPlayer != null && isReady) {
+                                currentPosition / mediaPlayer!!.duration
+                            } else 0f,
+                            onValueChange = {
+                                if(!isReady) return@Slider
+                                mediaPlayer?.seekTo((it * mediaPlayer!!.duration).toInt())
+                            },
                             colors = SliderDefaults.colors(
                                 // We make both tracks the same light color to match the image
                                 activeTrackColor = Color.LightGray.copy(alpha = 0.3f),
@@ -165,12 +224,13 @@ fun StoryDetailScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
 
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("0:00", fontSize = 12.sp, color = colors.muted)
-                            Text("6:12", fontSize = 12.sp, color = colors.muted)
+                            Text(formatDuration((currentPosition /1000).toDouble()), fontSize = 12.sp, color = colors.muted)
+                            Text(formatDuration(story.duration), fontSize = 12.sp, color = colors.muted)
                         }
 
                         Spacer(modifier = Modifier.height(20.dp))
@@ -197,18 +257,32 @@ fun StoryDetailScreen(
                                 modifier = Modifier
                                     .size(64.dp)
                                     .background(colors.accent, CircleShape)
-                                    .clickable { },
+                                    .clickable {
+                                        mediaPlayer?.let { player ->
+                                            if(!isReady) return@clickable
+                                            if (player.isPlaying) {
+                                                player.pause()
+                                                isPlaying = false
+                                            } else {
+                                                player.start()
+                                                isPlaying = true
+                                            }
+                                        }
+                                    },
                                 contentAlignment = Alignment.Center
                             ) {
-
                                 Icon(
-                                    imageVector = Icons.Outlined.PlayArrow,
+                                    imageVector = if (isPlaying)
+                                        Icons.Outlined.Pause
+                                    else
+                                        Icons.Outlined.PlayArrow,
                                     contentDescription = null,
                                     tint = Color.White,
                                     modifier = Modifier.size(36.dp)
                                 )
-
                             }
+
+
 
                             Icon(
                                 imageVector = Icons.Outlined.SkipNext,
@@ -302,7 +376,10 @@ fun StoryDetailScreen(
 
                             Slider(
                                 value = volume,
-                                onValueChange = { volume = it },
+                                onValueChange = {
+                                    volume = it
+                                    mediaPlayer?.setVolume(it, it)
+                                },
                                 modifier = Modifier
                                     .weight(1f)
                                     .padding(horizontal = 8.dp),
@@ -325,7 +402,7 @@ fun StoryDetailScreen(
                                 }
                             )
                             Text(
-                                text = "100%",
+                                text = "${(volume * 100).toInt()}%",
                                 fontSize = 12.sp,
                                 color = colors.muted
                             )
@@ -358,8 +435,7 @@ fun StoryDetailScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text =
-                        "Once upon a time, in a land far, far away, there lived a young adventurer named Alex. Alex had always dreamed of exploring the mysterious forests that lay beyond the village.\n\nOne bright morning, Alex packed a small bag with essentials—a map, some food, and a compass that had belonged to their grandfather.",
+                    text = story.description,
                     fontSize = 16.sp,
                     lineHeight = 24.sp,
                     color = colors.text
@@ -369,35 +445,45 @@ fun StoryDetailScreen(
         Spacer(modifier = Modifier.height(50.dp))
     }
 }
-
-@Preview(showBackground = true, name = "Light Mode - Story Detail")
-@Composable
-fun StoryDetailPreviewLight() {
-    StoryAliveTheme(darkTheme = false) {
-        Column {
-            StoryAliveTopBar(selectedPage = "Published")
-            // Mocking the screen with sample data
-            StoryDetailScreen(
-                title = "The Adventure Begins",
-                date = "2/20/2026",
-                isLightTheme = true
-            )
-        }
-    }
+fun formatDuration(seconds: Double): String {
+    val mins = (seconds / 60).toInt()
+    val secs = (seconds % 60).toInt()
+    return "%d:%02d".format(mins, secs)
 }
-
-@Preview(showBackground = true, name = "Dark Mode - Story Detail")
-@Composable
-fun StoryDetailPreviewDark() {
-    StoryAliveTheme(darkTheme = true) {
-        Column {
-            StoryAliveTopBar(selectedPage = "Published")
-            // Mocking the screen in Dark Mode
-            StoryDetailScreen(
-                title = "The Adventure Begins",
-                date = "2/20/2026",
-                isLightTheme = false
-            )
-        }
-    }
-}
+//@Preview(showBackground = true, name = "Light Mode - Story Detail")
+//@Composable
+//fun StoryDetailPreviewLight() {
+//
+//
+//    StoryAliveTheme(darkTheme = false) {
+//        Column {
+//            StoryAliveTopBar(selectedPage = "Published")
+//            StoryDetailScreen(
+//                story = fakeStory,
+//                isLightTheme = true
+//            )
+//        }
+//    }
+//}
+//
+//@Preview(showBackground = true, name = "Dark Mode - Story Detail")
+//@Composable
+//fun StoryDetailPreviewDark() {
+//    val fakeStory = Story(
+//        title = "The Adventure Begins",
+//        description = "This is a sample story for preview.",
+//        createdAt = java.util.Date().toInstant(),
+//        duration = 120.0,
+//        finalAudioPath = ""
+//    )
+//
+//    StoryAliveTheme(darkTheme = true) {
+//        Column {
+//            StoryAliveTopBar(selectedPage = "Published")
+//            StoryDetailScreen(
+//                story = fakeStory,
+//                isLightTheme = false
+//            )
+//        }
+//    }
+//}

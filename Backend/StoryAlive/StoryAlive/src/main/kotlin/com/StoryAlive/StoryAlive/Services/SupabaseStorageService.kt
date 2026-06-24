@@ -68,16 +68,16 @@ class SupabaseStorageService(
         )
         return audioUrl
     }
-    fun saveAudioToCloud(audioBytes: ByteArray, fileName: String, storyId: ObjectId): String {
+    fun saveAudioToCloud(audioBytes: ByteArray, fileName: String="file.wav", actorId: ObjectId, usedBucket: String): String {
 
         val safeName = fileName.replace("\\s+".toRegex(), "_")
-        val path = "${storyId}/final/${UUID.randomUUID()}_$safeName"
+        val path = "${actorId}/${UUID.randomUUID()}_$safeName"
 
         val audioUrl = uploadFile(
             fileBytes = audioBytes,
             path = path,
-            contentType = "audio/mpeg",
-            usedBucket = "story-audio-files"
+            contentType = "audio/wav",
+            usedBucket = usedBucket
         )
 
         return audioUrl
@@ -108,4 +108,32 @@ class SupabaseStorageService(
         return "$supabaseUrl/storage/v1/object/public/$usedBucket/$path"
     }
 
+    fun deleteFileFromSupabase(fileUrl: String) {
+
+        val marker = "/storage/v1/object/public/"
+
+        val relativePath = fileUrl.substringAfter(marker)
+
+        val bucket = relativePath.substringBefore("/")
+        val path = relativePath.substringAfter("/")
+
+        val requestBody = """
+        ["$path"]
+    """.trimIndent().toRequestBody("application/json".toMediaType())
+
+        val request = Request.Builder()
+            .url("$supabaseUrl/storage/v1/object/$bucket")
+            .addHeader("Authorization", "Bearer $supabaseKey")
+            .addHeader("apikey", supabaseKey)
+            .delete(requestBody)
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw RuntimeException(
+                    "Supabase delete failed: ${response.body?.string()}"
+                )
+            }
+        }
+    }
 }

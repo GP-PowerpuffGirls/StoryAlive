@@ -22,7 +22,7 @@ data class Story(
     var jsonPath: String, //to be added in service after llm
     var pdfPath: String,
     val createdAt: Instant, //to be added in service
-    val modifiedAt: Instant, //to be added in service
+    var modifiedAt: Instant, //to be added in service
     val minimumAge: Int,
     val numberOfViews: Int//to be updated when the story is gotten getstory()
 )

@@ -12,45 +12,46 @@ import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.web.server.ResponseStatusException
 import java.util.Optional
-import kotlin.collections.List
 
 @Service
 class UserService ( private val userRepo: UserRepo, private val hashEncoder : HashEncoder) {
 
-    public fun getUserData() : UserDTO{
+     fun getUserData() : UserDTO{
 
-        val currentUser = (SecurityContextHolder
-            .getContext()
-            .authentication
-            ?.principal) as CurrentUserDetails
-
-        val userId : ObjectId = currentUser.getUserId()
-        val user: Optional<User> = userRepo.findById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid access token")
+        val userId : ObjectId = getCurrentUser().getUserId()
+        val user: Optional<User> = userRepo.findById(userId)
 
         return UserDTO(
             firstName = user.get().firstName,
             lastName = user.get().lastName,
-            email = user.get().lastName,
+            email = user.get().email,
             accountCreationDate = user.get().accountCreationDate,
             favouriteVoiceActors =  user.get().favouriteVoiceActors,
             totalPublishedStoriesCount = user.get().totalPublishedStoriesCount,
             totalVoiceActorsCount = user.get().totalVoiceActorsCount,
             totalStoriesCount = user.get().totalStoriesCount,
+            age = user.get().age
         )
 
     }
+     fun saveUser(user: User){
+        userRepo.save(user)
+    }
 
-    public fun editUserData( updatedData : UserUpdateRequest) : UserDTO{
+     fun getUserFavouriteStories() : List<ObjectId>{
 
-        val currentUser = (SecurityContextHolder
-            .getContext()
-            .authentication
-            ?.principal) as CurrentUserDetails
+        val userId : ObjectId = getCurrentUser().getUserId()
+        val user: Optional<User> = userRepo.findById(userId)
 
-        val userId : ObjectId = currentUser.getUserId()
-        val user: Optional<User> = userRepo.findById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid access token")
+        return user.get().favouriteStories
+    }
 
-        var hashedPassword="";
+     fun editUserData( updatedData : UserUpdateRequest) : UserDTO{
+
+        val userId : ObjectId = getCurrentUser().getUserId()
+        val user: Optional<User> = userRepo.findById(userId)
+
+        var hashedPassword=""
         if (updatedData.newPassword != "" && updatedData.currentPassword != "" && updatedData.newPassword == updatedData.currentPassword){
             hashedPassword = hashEncoder.encode(updatedData.newPassword) ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to hash password")
         }
@@ -61,7 +62,6 @@ class UserService ( private val userRepo: UserRepo, private val hashEncoder : Ha
         val updatedUser = userRepo.save(
             User(
                 userId = user.get().userId,
-
                 firstName = updatedData.firstName ?: user.get().firstName,
                 lastName = updatedData.lastName ?: user.get().lastName,
                 email = updatedData.email ?: user.get().email,
@@ -78,14 +78,46 @@ class UserService ( private val userRepo: UserRepo, private val hashEncoder : Ha
             accountCreationDate = updatedUser.accountCreationDate,
             favouriteVoiceActors = updatedUser.favouriteVoiceActors,
             totalPublishedStoriesCount = updatedUser.totalStoriesCount,
-            totalStoriesCount = updatedUser.totalStoriesCount
+            totalStoriesCount = updatedUser.totalStoriesCount,
+            age = updatedData.age?: user.get().age
         )
     }
-    fun getCurrrenctUser(): CurrentUserDetails {
+    fun getUser(): User {
+        return userRepo.findByUserId(getCurrentUser().getUserId())
+    }
+
+    fun getCurrentUser(): CurrentUserDetails {
         val auth = SecurityContextHolder.getContext().authentication
         require(auth != null && auth.principal is CurrentUserDetails)
         return auth.principal as CurrentUserDetails
     }
 
+    fun addStoryToHistory(storyId: ObjectId) {
 
+        val userId : ObjectId = getCurrentUser().getUserId()
+        val user: Optional<User> = userRepo.findById(userId)
+
+        val newHistory = user.get().historyStories + storyId
+
+        userRepo.save(
+            User(
+                historyStories = newHistory,
+
+                userId = userId,
+                firstName = user.get().firstName,
+                lastName = user.get().lastName,
+                email = user.get().email,
+                password = user.get().password ,
+                age = user.get().age,
+                )
+        )
+
+    }
+
+    fun getHistoryStories() : List<ObjectId>{
+        val userId : ObjectId = getCurrentUser().getUserId()
+        val user: Optional<User> = userRepo.findById(userId)
+
+        return user.get().historyStories
+    }
 }

@@ -6,6 +6,6 @@ import lombok.Data
 import lombok.Getter
 
 
-data class BGMusicDto( val musicPath: String, var emotion: BGMusicEmotion?= null, val forKids: Boolean ) {
+data class BGMusicDto(var musicPath: String, var emotion: BGMusicEmotion?= null, var forKids: Boolean ) {
 
 }

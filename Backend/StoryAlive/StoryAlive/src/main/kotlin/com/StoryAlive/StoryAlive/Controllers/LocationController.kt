@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RequestPart
@@ -30,7 +31,7 @@ class LocationController (private val locationService: LocationService) {
 
     @GetMapping("/{locationId}")
     fun getLocation( @PathVariable locationId: String ) : LocationDto {
-        return locationService.getLocationById(ObjectId(locationId));
+        return locationService.getLocationById(ObjectId(locationId))
     }
 
 
@@ -49,6 +50,13 @@ class LocationController (private val locationService: LocationService) {
 
         val locations = locationService.saveLocationList(locationDtoList, files)
         return ResponseEntity.status(HttpStatus.CREATED).body(locations)
+
+    }
+    @PostMapping("list-DB")
+    fun saveLocationListToDB( @RequestBody locationDtoList: List<LocationDto>): ResponseEntity<List<LocationDto>> {
+
+        val location = locationService.saveLocationListToDB(requests = locationDtoList)
+        return ResponseEntity.status(HttpStatus.CREATED).body(location)
 
     }
 }

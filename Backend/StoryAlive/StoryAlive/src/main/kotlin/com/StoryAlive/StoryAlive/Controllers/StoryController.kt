@@ -1,9 +1,10 @@
 package com.StoryAlive.StoryAlive.Controllers
 
 import Story
+import com.StoryAlive.StoryAlive.DTOs.Story.RequestStoryUpdateDTO
 import com.StoryAlive.StoryAlive.DTOs.Story.StoryRequestDTO
 import com.StoryAlive.StoryAlive.Services.StoryService
-import io.ktor.util.StatelessHmacNonceManager
+import org.springframework.web.bind.annotation.RequestBody
 import org.bson.types.ObjectId
 import org.springframework.data.domain.Page
 import org.springframework.http.MediaType
@@ -15,12 +16,35 @@ import org.springframework.web.multipart.MultipartFile
 @RequestMapping("stories")
 class StoryController(private val storyService: StoryService) {
 
+    @GetMapping("/{storyId}")
+    fun getStory(
+        @PathVariable storyId: String,
+    ): Story {
+        return storyService.getStoryById(ObjectId(storyId))
+    }
+
     @GetMapping
     fun getAllStories(
         @RequestParam(defaultValue = "0") pageNumber: Int,
         @RequestParam(defaultValue = "10") pageSize: Int
     ): Page<Story> {
         return storyService.getAllStories(pageNumber, pageSize)
+    }
+
+    @GetMapping("favourites")
+    fun getAllFavouriteStories(
+        @RequestParam(defaultValue = "0") pageNumber: Int,
+        @RequestParam(defaultValue = "10") pageSize: Int
+    ): Page<Story> {
+        return storyService.getAllFavouriteStories(pageNumber, pageSize)
+    }
+
+    @GetMapping("history")
+    fun getAllHistoryStories(
+        @RequestParam(defaultValue = "0") pageNumber: Int,
+        @RequestParam(defaultValue = "10") pageSize: Int
+    ): Page<Story> {
+        return storyService.getHistory(pageNumber, pageSize)
     }
 
     @GetMapping("/private")
@@ -37,6 +61,16 @@ class StoryController(private val storyService: StoryService) {
         @RequestPart("file") file: MultipartFile
     ): Story {
         return storyService.createStory(storyRequestDTO, file)
+    }
+
+    @PutMapping("/{storyId}/sentences/{sentenceId}")
+    fun updateStory(
+        @PathVariable storyId: String,
+        @PathVariable sentenceId: String,
+        @RequestBody requestStoryUpdateDTO: RequestStoryUpdateDTO)
+    : Story {
+        println("Entered controller");
+        return storyService.updateStory(ObjectId(storyId), sentenceId, requestStoryUpdateDTO)
     }
 
     @PostMapping("/{storyId}")
