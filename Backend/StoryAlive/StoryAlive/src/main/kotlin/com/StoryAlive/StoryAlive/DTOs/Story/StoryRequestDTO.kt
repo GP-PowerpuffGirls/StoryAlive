@@ -7,7 +7,7 @@ import com.StoryAlive.StoryAlive.Enums.Tags
 public data class StoryRequestDTO(
     val title: String,
     val description: String,
-    val voiceActors: MutableMap<String, Pair<String,String>>? = mutableMapOf(),
+    val voiceActors: MutableMap<String, VoiceActorSelectionDTO>? = mutableMapOf(),
     val genre: Genre,
     val isPrivate: Boolean,
     val hasSfx: Boolean,
