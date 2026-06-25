@@ -3,7 +3,7 @@ package com.StoryAlive.StoryAlive.mapper
 import Story
 import com.StoryAlive.StoryAlive.DTOs.StoryResponseDTO
 
-fun Story.toResponse(): StoryResponseDTO {
+public fun Story.toResponse(): StoryResponseDTO {
     return StoryResponseDTO(
         storyId = this.storyId.toString(),
         creatorId = this.creatorId.toString(),
