@@ -6,11 +6,12 @@ import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
+import okhttp3.logging.HttpLoggingInterceptor
 
 object RetrofitClient {
 
 
-    private const val BASE_URL = "http://192.168.1.8:8080/"
+    private const val BASE_URL = "http://192.168.1.5:8080/"
     fun getToken(context: Context): String {
         val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
         return prefs.getString("access_token", "") ?: ""
@@ -41,18 +42,31 @@ object RetrofitClient {
     }
 
     fun createApi(context: Context): ApiService {
+
+        val logging = HttpLoggingInterceptor()
+        logging.level = HttpLoggingInterceptor.Level.BODY
+
         val client = OkHttpClient.Builder()
             .connectTimeout(5, TimeUnit.MINUTES)
             .readTimeout(60, TimeUnit.MINUTES)
             .writeTimeout(60, TimeUnit.MINUTES)
+
+            .addInterceptor(logging)
+
             .addInterceptor { chain ->
-                val token = RetrofitClient.getToken(context).trim().replace("\\s+".toRegex(), "")
+                val token = RetrofitClient.getToken(context)
+                    .trim()
+                    .replace("\\s+".toRegex(), "")
+
                 val request = chain.request().newBuilder()
                     .addHeader("Authorization", "Bearer $token")
                     .build()
+
                 chain.proceed(request)
             }
+
             .build()
+
         return Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(client)

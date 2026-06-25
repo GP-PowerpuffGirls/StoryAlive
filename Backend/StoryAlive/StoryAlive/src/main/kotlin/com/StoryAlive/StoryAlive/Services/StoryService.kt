@@ -140,17 +140,20 @@ class StoryService(private val storyRepo: StoryRepo,
         return storyRepo.save(currentStory).toResponse()
     }
 
-    fun updateStory(storyId: ObjectId, sentenceId: ObjectId, requestStoryUpdateDTO: RequestStoryUpdateDTO): StoryResponseDTO {
+    fun updateStory(storyId: ObjectId, sentenceId: String, requestStoryUpdateDTO: RequestStoryUpdateDTO): StoryResponseDTO {
 
         val currentStory = storyRepo.findById(storyId).orElseThrow { RuntimeException("Story not found with id $storyId") }
+        println("Current story: ${currentStory.storyId}");
 
         val oldJsonPath = currentStory.jsonPath
         val currentJsonString = supabaseStorageService.downloadFileFromSupabase(oldJsonPath)
         val currentStoryDto = mapper.readValue(currentJsonString, StoryCreationDTO::class.java)
+        println("Current story DTO: $currentStoryDto")
 
-        val response = ttsService.updateStoryAudio(currentStoryDto, sentenceId.toString(), requestStoryUpdateDTO)
+        val response = ttsService.updateStoryAudio(currentStoryDto, sentenceId, requestStoryUpdateDTO)
         val updatedJson = mapper.writeValueAsString(response.storyCreationDTO)
         val newJsonPath = supabaseStorageService.saveJsonToCloud(updatedJson, userService.getCurrentUser().getUserId())
+        println("New JSON path: $newJsonPath")
 
         currentStory.duration = response.duration
         currentStory.finalAudioPath = response.audioPath
@@ -158,9 +161,6 @@ class StoryService(private val storyRepo: StoryRepo,
         currentStory.modifiedAt = java.time.Instant.now()
 
         val savedStory = storyRepo.save(currentStory)
-
-        supabaseStorageService.deleteFileFromSupabase(oldJsonPath)
-
         return savedStory.toResponse()
     }
 

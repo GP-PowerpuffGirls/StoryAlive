@@ -263,7 +263,7 @@ fun UploadScreen(
                         val voiceMap = selectedActors.mapIndexed { index, actorName ->
                             // Example: assign roles dynamically or keep default roles
                             val role = "actor$index" // Or get a role from your UI
-                            role to VoiceActorDTO(first = actorName, second = "Narrator")
+                            role to VoiceActorDTO(actorName = actorName, castName = "Narrator")
                         }.toMap()
                         if (storyTitle.isBlank()) {
                             Toast.makeText(context, "Fill story title", Toast.LENGTH_SHORT).show()

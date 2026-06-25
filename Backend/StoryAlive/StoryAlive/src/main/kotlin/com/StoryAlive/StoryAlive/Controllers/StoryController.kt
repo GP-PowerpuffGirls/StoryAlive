@@ -4,9 +4,9 @@ import Story
 import com.StoryAlive.StoryAlive.DTOs.Story.RequestStoryUpdateDTO
 import com.StoryAlive.StoryAlive.DTOs.Story.StoryRequestDTO
 import com.StoryAlive.StoryAlive.DTOs.StoryResponseDTO
+import com.StoryAlive.StoryAlive.Enums.Emotion
 import com.StoryAlive.StoryAlive.Services.StoryService
 import io.ktor.util.StatelessHmacNonceManager
-import io.swagger.v3.oas.annotations.parameters.RequestBody
 import org.bson.types.ObjectId
 import org.springframework.data.domain.Page
 import org.springframework.http.MediaType
@@ -70,10 +70,10 @@ class StoryController(private val storyService: StoryService) {
         @PathVariable storyId: String,
         @PathVariable sentenceId: String,
         @RequestBody requestStoryUpdateDTO: RequestStoryUpdateDTO)
-    : StoryResponseDTO {
-        return storyService.updateStory(ObjectId(storyId), ObjectId(sentenceId), requestStoryUpdateDTO)
+            : StoryResponseDTO {
+        println("Entered controller");
+        return storyService.updateStory(ObjectId(storyId), sentenceId, requestStoryUpdateDTO)
     }
-
     @PostMapping("/{storyId}")
     fun uploadDummyStoryFile(
         @PathVariable storyId: String,

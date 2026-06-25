@@ -38,7 +38,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
-import com.example.storyalive.model.EditSentenceRequest
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -65,6 +64,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.storyalive.components.StoryAliveTopBar
+import com.example.storyalive.model.RequestStoryUpdateDTO
 import com.example.storyalive.model.Sentence
 import com.example.storyalive.model.StoryResponseDTO
 import com.example.storyalive.model.TimedSentence
@@ -644,7 +644,7 @@ fun StoryDetailScreen(
 
                     SimpleDropdown(
                         label = "Emotion",
-                        selectedItem = selectedEmotion,
+                        selectedItem = selectedEmotion.uppercase(),
                         options = emotions,
 //                        options = listOf(
 //                            "HAPPINESS",
@@ -669,7 +669,7 @@ fun StoryDetailScreen(
 
                     SimpleDropdown(
                         label = "Intensity",
-                        selectedItem = selectedIntensity,
+                        selectedItem = selectedIntensity.uppercase(),
                         options = listOf(
                             "LOW",
                             "MEDIUM",
@@ -695,7 +695,7 @@ fun StoryDetailScreen(
                         )
                         scope.launch {
                             try {
-                                val request = EditSentenceRequest(
+                                val request = RequestStoryUpdateDTO(
                                     emotion = selectedEmotion.uppercase(),
                                     intensity = selectedIntensity.uppercase()
                                 )

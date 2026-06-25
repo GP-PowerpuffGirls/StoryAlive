@@ -29,3 +29,7 @@ data class PagedResponse<T>(
     val size: Int,
     val number: Int
 )
+data class VoiceActorSelectionDTO(
+    val actorName: String="",
+    val castName: String=""
+)

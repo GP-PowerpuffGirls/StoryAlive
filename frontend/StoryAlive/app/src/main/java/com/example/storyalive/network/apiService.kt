@@ -2,9 +2,9 @@ package com.example.storyalive.network
 
 import android.R
 import com.example.storyalive.model.AuthResponse
-import com.example.storyalive.model.EditSentenceRequest
 import com.example.storyalive.model.PagedResponse
 import com.example.storyalive.model.PagedResponses
+import com.example.storyalive.model.RequestStoryUpdateDTO
 import com.example.storyalive.model.StoryRequestDTO
 import com.example.storyalive.model.StoryResponseDTO
 import com.example.storyalive.model.UserLoginRequest
@@ -116,6 +116,6 @@ interface ApiService {
     suspend fun editSentence(
         @Path("storyId") storyId: String,
         @Path("sentenceId") sentenceId: String,
-        @Body request: EditSentenceRequest
+        @Body request: RequestStoryUpdateDTO
     ): StoryResponseDTO
 }

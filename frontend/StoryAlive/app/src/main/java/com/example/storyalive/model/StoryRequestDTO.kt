@@ -2,8 +2,8 @@ package com.example.storyalive.model
 
 
 data class VoiceActorDTO(
-    val first: String,
-    val second: String
+    val actorName: String,
+    val castName: String
 )
 
 data class StoryRequestDTO(
