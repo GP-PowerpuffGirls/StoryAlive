@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material.icons.outlined.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import com.example.storyalive.model.EditSentenceRequest
@@ -166,8 +167,8 @@ fun StoryDetailScreen(
         mutableStateOf(false)
     }
 
-    var selectedEmotion by remember { mutableStateOf("NEUTRAL") }
-    var selectedIntensity by remember { mutableStateOf("MEDIUM") }
+    var selectedEmotion by remember { mutableStateOf("NARRATION") }
+    var selectedIntensity by remember { mutableStateOf("LOW") }
     var emotions by remember { mutableStateOf<List<String>>(emptyList()) }
     LaunchedEffect(currentSentenceIndex) {
         if (currentSentenceIndex != -1) {
@@ -240,7 +241,7 @@ fun StoryDetailScreen(
             emotions =
                 enums["emotions"]
                     ?: enums["EMOTIONS"]
-                            ?: emptyList()
+                                ?: emptyList()
 
         } catch (e: Exception) {
             Log.e("ENUMS", "Failed to load enums", e)
@@ -575,7 +576,11 @@ fun StoryDetailScreen(
                 if (isSelected) {
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    androidx.compose.material3.Button(
+                    Button(
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colors.accent,
+                            contentColor = Color(0xFFFFF0D1)
+                        ),
                         onClick = {
                             showEditDialog = true
                         }
@@ -620,6 +625,7 @@ fun StoryDetailScreen(
     }
     if (showEditDialog && selectedSentence != null) {
         AlertDialog(
+            containerColor = colors.card,
             onDismissRequest = { showEditDialog = false },
             title = {
                 Text(
@@ -635,11 +641,18 @@ fun StoryDetailScreen(
                         color = colors.text
                     )
 
-
                     SimpleDropdown(
                         label = "Emotion",
                         selectedItem = selectedEmotion,
-                        options = emotions,
+                        options = listOf(
+                            "HAPPINESS",
+                            "SADNESS",
+                            "FEAR",
+                            "ANGER",
+                            "SURPRISE",
+                            "WHISPER",
+                            "NARRATION"
+                        ),
                         onItemSelected = {
                             selectedEmotion = it
                         }
@@ -668,21 +681,30 @@ fun StoryDetailScreen(
             },
             confirmButton = {
                 Button(
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.accent,
+                        contentColor = Color(0xFFFFF0D1)
+                    ),
                     onClick = {
                         val sentence = selectedSentence ?: return@Button
-
+                        Log.d(
+                            "EDIT_REQUEST",
+                            "storyId=${story.storyId}, sentenceId=${sentence.sentenceId}, emotion=$selectedEmotion, intensity=$selectedIntensity"
+                        )
                         scope.launch {
                             try {
+                                val request = EditSentenceRequest(
+                                    emotion = selectedEmotion.uppercase(),
+                                    intensity = selectedIntensity.uppercase()
+                                )
+
+                                Log.d("EDIT_REQUEST", Gson().toJson(request))
                                 val updatedStory =
                                     RetrofitClient.createApi(context).editSentence(
                                         storyId = story.storyId,
                                         sentenceId = sentence.sentenceId,
-                                        request = EditSentenceRequest(
-                                            emotion = selectedEmotion,
-                                            intensity = selectedIntensity
-                                        )
+                                        request=request
                                     )
-
                                 mediaPlayer?.release()
 
                                 mediaPlayer = MediaPlayer().apply {
@@ -716,7 +738,11 @@ fun StoryDetailScreen(
                 }
             },
             dismissButton = {
-                androidx.compose.material3.Button(
+                Button(
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF917A73),
+                        contentColor = Color(0xFFFFF0D1)
+                    ),
                     onClick = {
                         showEditDialog = false
                     }

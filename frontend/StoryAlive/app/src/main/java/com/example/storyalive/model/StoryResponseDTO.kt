@@ -20,10 +20,6 @@ data class StoryResponseDTO(
     var minimumAge: Int,
     var numberOfViews: Int
 )
-data class IdObject(
-    val date: String,
-    val timestamp: Long
-)
 
 data class VoiceActorPair(
     val first: String,
