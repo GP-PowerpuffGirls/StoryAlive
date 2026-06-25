@@ -2,6 +2,7 @@ package com.example.storyalive
 
 import android.media.MediaPlayer
 import android.os.Bundle
+import android.provider.CalendarContract
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -293,7 +294,7 @@ fun StoryDetailScreen(
                         colors = CardDefaults.cardColors(
                             containerColor = colors.background.copy(alpha = 0.35f)
                         ),
-                        border = BorderStroke(1.dp, Color.LightGray.copy(.25f))
+                        border = BorderStroke(1.dp, Color(0xFF917A73).copy(.25f))
                     ) {
 
                         Column(
@@ -313,8 +314,8 @@ fun StoryDetailScreen(
                                 },
                                 colors = SliderDefaults.colors(
                                     // We make both tracks the same light color to match the image
-                                    activeTrackColor = Color.LightGray.copy(alpha = 0.3f),
-                                    inactiveTrackColor = Color.LightGray.copy(alpha = 0.3f),
+                                    activeTrackColor = colors.accent,
+                                    inactiveTrackColor = Color(0xFF917A73).copy(alpha = 0.3f),
                                     // This hides the default solid thumb so our custom one shows
                                     thumbColor = Color.Transparent
                                 ),
@@ -323,8 +324,8 @@ fun StoryDetailScreen(
                                     Surface(
                                         modifier = Modifier.size(20.dp),
                                         shape = CircleShape,
-                                        color = Color.White,
-                                        border = BorderStroke(2.dp, Color.Gray) // The dark ring
+                                        color = Color(0xFFFFF0D1),
+                                        border = BorderStroke(2.dp, colors.accent) // The dark ring
                                     ) {}
                                 },
                                 modifier = Modifier.fillMaxWidth()
@@ -391,7 +392,7 @@ fun StoryDetailScreen(
                                         else
                                             Icons.Outlined.PlayArrow,
                                         contentDescription = null,
-                                        tint = Color.White,
+                                        tint = Color(0xFFFFF0D1),
                                         modifier = Modifier.size(36.dp)
                                     )
                                 }
@@ -445,7 +446,7 @@ fun StoryDetailScreen(
                                             modifier = Modifier
                                                 .border(
                                                     1.dp,
-                                                    if (selected) colors.accent else Color.Gray,
+                                                    if (selected) colors.accent else Color(0xFF917A73),
                                                     RoundedCornerShape(6.dp)
                                                 )
                                                 .background(
@@ -459,7 +460,7 @@ fun StoryDetailScreen(
                                             Text(
                                                 text = speed,
                                                 fontSize = 10.sp,
-                                                color = if (selected) Color.White else colors.heading
+                                                color = if (selected) Color(0xFFFFF0D1) else colors.heading
                                             )
 
                                         }
@@ -484,7 +485,7 @@ fun StoryDetailScreen(
 
                                 val sliderColors = SliderDefaults.colors(
                                     activeTrackColor = colors.accent,
-                                    inactiveTrackColor = Color.LightGray.copy(alpha = 0.4f),
+                                    inactiveTrackColor =  Color(0xFF917A73).copy(alpha = 0.4f),
                                     thumbColor = Color.Transparent
                                 )
 
@@ -502,10 +503,10 @@ fun StoryDetailScreen(
                                         Surface(
                                             modifier = Modifier.size(18.dp),
                                             shape = CircleShape,
-                                            color = Color.White,
+                                            color = Color(0xFFFFF0D1),
                                             border = BorderStroke(
                                                 1.5.dp,
-                                                Color.DarkGray.copy(alpha = 0.7f)
+                                                colors.accent
                                             )
                                         ) {}
                                     },
@@ -561,7 +562,7 @@ fun StoryDetailScreen(
                 Text(
                     text = sentence.speaker,
                     fontSize = 12.sp,
-                    color = Color.Gray
+                    color = colors.muted
                 )
 
                 Text(
@@ -620,11 +621,20 @@ fun StoryDetailScreen(
     if (showEditDialog && selectedSentence != null) {
         AlertDialog(
             onDismissRequest = { showEditDialog = false },
-            title = { Text("Edit Sentence Audio") },
+            title = {
+                Text(
+                    "Edit Sentence Audio",
+                    color = colors.heading
+                )
+            },
             text = {
                 Column {
 
-                    Text("Emotion")
+                    Text(
+                        "Emotion",
+                        color = colors.text
+                    )
+
 
                     SimpleDropdown(
                         label = "Emotion",
@@ -637,7 +647,10 @@ fun StoryDetailScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Text("Intensity")
+                    Text(
+                        "Intensity",
+                        color = colors.text
+                    )
 
                     SimpleDropdown(
                         label = "Intensity",
