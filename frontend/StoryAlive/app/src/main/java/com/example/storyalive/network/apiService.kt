@@ -115,7 +115,7 @@ interface ApiService {
 
     @PUT("/stories/{storyId}/sentences/{sentenceId}")
     suspend fun editSentence(
-        @Path("storyId") storyId: IdObject,
+        @Path("storyId") storyId: String,
         @Path("sentenceId") sentenceId: String,
         @Body request: EditSentenceRequest
     ): StoryResponseDTO
