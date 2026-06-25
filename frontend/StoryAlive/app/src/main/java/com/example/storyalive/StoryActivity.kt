@@ -641,18 +641,20 @@ fun StoryDetailScreen(
                         color = colors.text
                     )
 
+
                     SimpleDropdown(
                         label = "Emotion",
                         selectedItem = selectedEmotion,
-                        options = listOf(
-                            "HAPPINESS",
-                            "SADNESS",
-                            "FEAR",
-                            "ANGER",
-                            "SURPRISE",
-                            "WHISPER",
-                            "NARRATION"
-                        ),
+                        options = emotions,
+//                        options = listOf(
+//                            "HAPPINESS",
+//                            "SADNESS",
+//                            "FEAR",
+//                            "ANGER",
+//                            "SURPRISE",
+//                            "WHISPER",
+//                            "NARRATION"
+//                        ),
                         onItemSelected = {
                             selectedEmotion = it
                         }
