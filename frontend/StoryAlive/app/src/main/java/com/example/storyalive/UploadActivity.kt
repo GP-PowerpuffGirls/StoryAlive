@@ -301,9 +301,16 @@ fun UploadScreen(
                             }
                             context.startActivity(intent)
 
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "Upload failed ❌ ${e.message}", Toast.LENGTH_LONG).show()
+                        }catch (e: Exception) {
+                            Log.e("UPLOAD_ERROR", "Upload failed", e)
+
+                            Toast.makeText(
+                                context,
+                                "Upload failed ❌ ${e.message}",
+                                Toast.LENGTH_LONG
+                            ).show()
                         }
+
 
                     } catch (e: Exception) {
                         e.printStackTrace()

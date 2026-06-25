@@ -167,7 +167,7 @@ fun StoryDetailScreen(
 
     var selectedEmotion by remember { mutableStateOf("NEUTRAL") }
     var selectedIntensity by remember { mutableStateOf("MEDIUM") }
-
+    var emotions by remember { mutableStateOf<List<String>>(emptyList()) }
     LaunchedEffect(currentSentenceIndex) {
         if (currentSentenceIndex != -1) {
             listState.animateScrollToItem(currentSentenceIndex)
@@ -226,6 +226,23 @@ fun StoryDetailScreen(
 
         } catch (e: Exception) {
             Log.e("StoryDebug", "Transcript load failed", e)
+        }
+    }
+    LaunchedEffect(Unit) {
+        try {
+            val enums = RetrofitClient
+                .createApi(context)
+                .getEnums()
+
+            Log.d("ENUMS", enums.toString())
+
+            emotions =
+                enums["emotions"]
+                    ?: enums["EMOTIONS"]
+                            ?: emptyList()
+
+        } catch (e: Exception) {
+            Log.e("ENUMS", "Failed to load enums", e)
         }
     }
     //UI
@@ -612,14 +629,7 @@ fun StoryDetailScreen(
                     SimpleDropdown(
                         label = "Emotion",
                         selectedItem = selectedEmotion,
-                        options = listOf(
-                            "HAPPY",
-                            "SAD",
-                            "ANGRY",
-                            "FEAR",
-                            "Surprise",
-                            "NEUTRAL"
-                        ),
+                        options = emotions,
                         onItemSelected = {
                             selectedEmotion = it
                         }
@@ -633,9 +643,9 @@ fun StoryDetailScreen(
                         label = "Intensity",
                         selectedItem = selectedIntensity,
                         options = listOf(
-                            "1",
-                            "2",
-                            "3"
+                            "LOW",
+                            "MEDIUM",
+                            "HIGH"
                         ),
                         onItemSelected = {
                             selectedIntensity = it
@@ -710,36 +720,36 @@ fun formatDuration(seconds: Double): String {
     val secs = (seconds % 60).toInt()
     return "%d:%02d".format(mins, secs)
 }
-val fakeStory = StoryResponseDTO(
-    storyId = "1",
-    creatorId = "1",
-    voiceActors = emptyMap(),
-    title = "The Lost Kingdom",
-    description = "Adventure story preview",
-    tags = emptyList(),
-    genre = "FANTASY",
-    duration = 245.5,
-    isPrivate = false,
-    hasSfx = true,
-    hasBackgroundMusic = true,
-    finalAudioPath = "",
-    jsonPath = "",
-    pdfPath = "",
-    createdAt = java.time.Instant.now().toString(),
-    modifiedAt = java.time.Instant.now().toString(),
-    minimumAge = 10,
-    numberOfViews = 100
-)
-@Preview(showBackground = true)
-@Composable
-fun StoryDetailPreview() {
-    StoryAliveTheme {
-        Column {
-            StoryAliveTopBar(selectedPage = "Published")
-            StoryDetailScreen(
-                story = fakeStory,
-                isLightTheme = true
-            )
-        }
-    }
-}
+//val fakeStory = StoryResponseDTO(
+//    storyId = "1",
+//    creatorId = "1",
+//    voiceActors = emptyMap(),
+//    title = "The Lost Kingdom",
+//    description = "Adventure story preview",
+//    tags = emptyList(),
+//    genre = "FANTASY",
+//    duration = 245.5,
+//    isPrivate = false,
+//    hasSfx = true,
+//    hasBackgroundMusic = true,
+//    finalAudioPath = "",
+//    jsonPath = "",
+//    pdfPath = "",
+//    createdAt = java.time.Instant.now().toString(),
+//    modifiedAt = java.time.Instant.now().toString(),
+//    minimumAge = 10,
+//    numberOfViews = 100
+//)
+//@Preview(showBackground = true)
+//@Composable
+//fun StoryDetailPreview() {
+//    StoryAliveTheme {
+//        Column {
+//            StoryAliveTopBar(selectedPage = "Published")
+//            StoryDetailScreen(
+//                story = fakeStory,
+//                isLightTheme = true
+//            )
+//        }
+//    }
+//}
