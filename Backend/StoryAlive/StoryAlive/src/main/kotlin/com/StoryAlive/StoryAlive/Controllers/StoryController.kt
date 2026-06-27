@@ -3,8 +3,10 @@ package com.StoryAlive.StoryAlive.Controllers
 import Story
 import com.StoryAlive.StoryAlive.DTOs.Story.RequestStoryUpdateDTO
 import com.StoryAlive.StoryAlive.DTOs.Story.StoryRequestDTO
+import com.StoryAlive.StoryAlive.DTOs.StoryResponseDTO
+import com.StoryAlive.StoryAlive.Enums.Emotion
 import com.StoryAlive.StoryAlive.Services.StoryService
-import org.springframework.web.bind.annotation.RequestBody
+import io.ktor.util.StatelessHmacNonceManager
 import org.bson.types.ObjectId
 import org.springframework.data.domain.Page
 import org.springframework.http.MediaType
@@ -19,7 +21,7 @@ class StoryController(private val storyService: StoryService) {
     @GetMapping("/{storyId}")
     fun getStory(
         @PathVariable storyId: String,
-    ): Story {
+    ): StoryResponseDTO {
         return storyService.getStoryById(ObjectId(storyId))
     }
 
@@ -27,7 +29,7 @@ class StoryController(private val storyService: StoryService) {
     fun getAllStories(
         @RequestParam(defaultValue = "0") pageNumber: Int,
         @RequestParam(defaultValue = "10") pageSize: Int
-    ): Page<Story> {
+    ): Page<StoryResponseDTO> {
         return storyService.getAllStories(pageNumber, pageSize)
     }
 
@@ -35,7 +37,7 @@ class StoryController(private val storyService: StoryService) {
     fun getAllFavouriteStories(
         @RequestParam(defaultValue = "0") pageNumber: Int,
         @RequestParam(defaultValue = "10") pageSize: Int
-    ): Page<Story> {
+    ): Page<StoryResponseDTO> {
         return storyService.getAllFavouriteStories(pageNumber, pageSize)
     }
 
@@ -43,7 +45,7 @@ class StoryController(private val storyService: StoryService) {
     fun getAllHistoryStories(
         @RequestParam(defaultValue = "0") pageNumber: Int,
         @RequestParam(defaultValue = "10") pageSize: Int
-    ): Page<Story> {
+    ): Page<StoryResponseDTO> {
         return storyService.getHistory(pageNumber, pageSize)
     }
 
@@ -51,7 +53,7 @@ class StoryController(private val storyService: StoryService) {
     fun getAllPrivateStories(
         @RequestParam(defaultValue = "0") pageNumber: Int,
         @RequestParam(defaultValue = "10") pageSize: Int
-    ): Page<Story> {
+    ): Page<StoryResponseDTO> {
         return storyService.getAllPrivateStories(pageNumber, pageSize)
     }
 
@@ -59,7 +61,7 @@ class StoryController(private val storyService: StoryService) {
     fun createStory(
         @RequestPart storyRequestDTO: StoryRequestDTO,
         @RequestPart("file") file: MultipartFile
-    ): Story {
+    ): StoryResponseDTO{
         return storyService.createStory(storyRequestDTO, file)
     }
 
@@ -68,15 +70,14 @@ class StoryController(private val storyService: StoryService) {
         @PathVariable storyId: String,
         @PathVariable sentenceId: String,
         @RequestBody requestStoryUpdateDTO: RequestStoryUpdateDTO)
-    : Story {
+            : StoryResponseDTO {
         println("Entered controller");
         return storyService.updateStory(ObjectId(storyId), sentenceId, requestStoryUpdateDTO)
     }
-
     @PostMapping("/{storyId}")
     fun uploadDummyStoryFile(
         @PathVariable storyId: String,
-    ): Story {
+    ): StoryResponseDTO {
         return storyService.createStoryDummy(ObjectId(storyId))
     }
 

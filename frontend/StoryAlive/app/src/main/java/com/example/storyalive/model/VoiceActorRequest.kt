@@ -15,8 +15,10 @@ enum class Gender {
 data class VoiceActorRequest(
     val actorName: String,
     val gender: Gender,
+    @SerializedName("isAdult")
     val adult: Boolean,
-    val private: Boolean,
+    @SerializedName("isPrivate")
+    val isPrivate: Boolean,
     val audios: List<AudioRequest>,
     val preferredRole: String
 )
@@ -26,4 +28,8 @@ data class PagedResponse<T>(
     val totalPages: Int,
     val size: Int,
     val number: Int
+)
+data class VoiceActorSelectionDTO(
+    val actorName: String="",
+    val castName: String=""
 )

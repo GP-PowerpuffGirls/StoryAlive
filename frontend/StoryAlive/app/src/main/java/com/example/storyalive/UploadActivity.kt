@@ -121,7 +121,7 @@ fun UploadScreen(
             result.data?.getStringExtra("NEW_VOICE_ACTOR")?.let { json ->
                 val newActor = Gson().fromJson(json, VoiceActorRequest::class.java)
                 actors = (actors + newActor).sortedWith(
-                    compareByDescending<VoiceActorRequest> { it.private }.thenBy { it.actorName }
+                    compareByDescending<VoiceActorRequest> { it.isPrivate }.thenBy { it.actorName }
                 )
             }
         }
@@ -129,7 +129,7 @@ fun UploadScreen(
 
 
     fun loadActorsPage(page: Int, pageSize: Int = 10) {
-       if(!hasMoreActors || isLoadingActors) return
+        if(!hasMoreActors || isLoadingActors) return
         isLoadingActors=true
         scope.launch {
             try {
@@ -137,7 +137,7 @@ fun UploadScreen(
                 if(response.isSuccessful){
                     val body =response.body()
                     val newActors = body?.content?:emptyList()
-                    actors = (actors + newActors).sortedWith(compareByDescending<VoiceActorRequest> { it.private }.thenBy { it.actorName })
+                    actors = (actors + newActors).sortedWith(compareByDescending<VoiceActorRequest> { it.isPrivate }.thenBy { it.actorName })
                     hasMoreActors = page < (body?.totalPages ?: 1) - 1
                 }
             }catch (e: Exception) {
@@ -263,7 +263,7 @@ fun UploadScreen(
                         val voiceMap = selectedActors.mapIndexed { index, actorName ->
                             // Example: assign roles dynamically or keep default roles
                             val role = "actor$index" // Or get a role from your UI
-                            role to VoiceActorDTO(first = actorName, second = "Narrator")
+                            role to VoiceActorDTO(actorName = actorName, castName = "Narrator")
                         }.toMap()
                         if (storyTitle.isBlank()) {
                             Toast.makeText(context, "Fill story title", Toast.LENGTH_SHORT).show()
@@ -291,7 +291,7 @@ fun UploadScreen(
                         try {
                             val story = RetrofitClient.createApi(context).createStory(pdfPart, storyRequestBody)
 
-                            Toast.makeText(context, "Processing Done ✅", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Upload Done ✅", Toast.LENGTH_SHORT).show()
 
                             val gson = Gson()
                             val storyJson = gson.toJson(story)
@@ -301,9 +301,16 @@ fun UploadScreen(
                             }
                             context.startActivity(intent)
 
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "Upload failed ❌ ${e.message}", Toast.LENGTH_LONG).show()
+                        }catch (e: Exception) {
+                            Log.e("UPLOAD_ERROR", "Upload failed", e)
+
+                            Toast.makeText(
+                                context,
+                                "Upload failed ❌ ${e.message}",
+                                Toast.LENGTH_LONG
+                            ).show()
                         }
+
 
                     } catch (e: Exception) {
                         e.printStackTrace()
@@ -528,7 +535,7 @@ fun VoiceActorCard(
                                     fontSize = 12.sp,
                                     color = colors.text
                                 )
-                                if (actor.private) {
+                                if (actor.isPrivate) {
                                     Surface(
                                         color = colors.accent,
                                         shape = RoundedCornerShape(8.dp)

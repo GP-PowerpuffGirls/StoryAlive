@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="61a90dc1-f9a1-45c5-b12a-cd7f3ce0ee47" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../Dataset/EmotionAudios/Monsters Inc - PROCESSED/Anger/ابو عنكبوت/انت بتعمل ايه نزل ايدك دى مبسوط دلوقتى يا شلبى قضيت على الشركة شركة المرعبين المحدودة انتهت هنجيب منين صريخ للبلد أزمة الطاقة هتبقى أقوى وانت السبب_3.m4a" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/StoryAlive/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/StoryAlive/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/StoryAlive/app/src/main/java/com/example/storyalive/StoryActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/StoryAlive/app/src/main/java/com/example/storyalive/StoryActivity.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/StoryAlive/app/src/main/java/com/example/storyalive/UploadActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/StoryAlive/app/src/main/java/com/example/storyalive/UploadActivity.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/StoryAlive/app/src/main/java/com/example/storyalive/VoiceActorActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/StoryAlive/app/src/main/java/com/example/storyalive/VoiceActorActivity.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/StoryAlive/app/src/main/java/com/example/storyalive/model/StoryResponseDTO.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/StoryAlive/app/src/main/java/com/example/storyalive/model/StoryResponseDTO.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/StoryAlive/app/src/main/java/com/example/storyalive/model/VoiceActorRequest.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/StoryAlive/app/src/main/java/com/example/storyalive/model/VoiceActorRequest.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/StoryAlive/app/src/main/java/com/example/storyalive/network/apiService.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/StoryAlive/app/src/main/java/com/example/storyalive/network/apiService.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/StoryAlive/app/src/main/java/com/example/storyalive/network/retrofitClient.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/StoryAlive/app/src/main/java/com/example/storyalive/network/retrofitClient.kt" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ExternalProjectsData">
+    <projectState path="$PROJECT_DIR$/StoryAlive/StoryAlive">
+      <ProjectState />
+    </projectState>
+  </component>
+  <component name="ExternalProjectsManager">
+    <system id="GRADLE">
+      <state>
+        <projects_view>
+          <tree_state>
+            <expand>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="StoryAlive" type="f1a62948:ProjectNode" />
+              </path>
+            </expand>
+            <select />
+          </tree_state>
+        </projects_view>
+      </state>
+    </system>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
+  <component name="GradleScriptDefinitionsStorage" workingDir="$PROJECT_DIR$/StoryAlive/StoryAlive" gradleHome="C:\Users\Medha\.gradle\wrapper\dists\gradle-9.3.1-bin\23ovyewtku6u96viwx3xl3oks\gradle-9.3.1" javaHome="C:\Program Files\Java\jdk-21" gradleVersion="9.3.1" />
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 4
+}</component>
+  <component name="ProjectId" id="3FRj8b65RwxL9IJUQimuQQ1TQzZ" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Gradle.StoryAlive [:com.StoryAlive.StoryAlive.StoryAliveApplicationKt.main()].executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "C:/Users/Medha/Documents/GitHub/StoryAlive/Backend",
+    "project.structure.last.edited": "Project",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.2"
+  }
+}]]></component>
+  <component name="RunManager">
+    <configuration name="StoryAliveApplicationKt" type="Application" factoryName="Application" nameIsGenerated="true">
+      <option name="ALTERNATIVE_JRE_PATH" value="17" />
+      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
+      <envs>
+        <env name="AI_MODEL_URL" value="https://habiba-hamed-llm-storyalive.hf.space/process" />
+        <env name="JWT_SECRET_BASE64" value="78Tpp9eBN8yButVYKpcZag4sIW+yBjWkWx2mo0ISEKM=" />
+        <env name="MONGO_URI" value="mongodb+srv://christinmedhat2003_db_user:xzAZLkqZqi36fj4e@storyalivedb.cq6c3rs.mongodb.net/storyalive?retryWrites=true&amp;w=majority&amp;appName=StoryAliveDb" />
+        <env name="SUPABASE_BUCKET" value="pdf-files" />
+        <env name="SUPABASE_KEY" value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2bHh2aGRnYWNrdHNneWt5Y2ttIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTk2MTQ5MSwiZXhwIjoyMDg3NTM3NDkxfQ.tzfHcbzwzctHDDDp3vk4JGz30ajN2szncAV-1wK7_pM" />
+        <env name="SUPABASE_URL" value="https://kvlxvhdgacktsgykyckm.supabase.co/" />
+        <env name="TTS_MODEL_URL" value="https://mariakaiser-tts-api.hf.space/tts/" />
+        <env name="TTS_MODEL_URL2" value="https://thigh-ambulance-unlucky.ngrok-free.dev/tts/" />
+      </envs>
+      <option name="MAIN_CLASS_NAME" value="com.StoryAlive.StoryAlive.StoryAliveApplicationKt" />
+      <module name="StoryAlive.main" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="JetRunConfigurationType">
+      <module name="Backend" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="KotlinStandaloneScriptRunConfigurationType">
+      <module name="Backend" />
+      <option name="filePath" />
+      <method v="2" />
+    </configuration>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-2fc7cc6b9a17-intellij.indexing.shared.core-IU-253.30387.90" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="61a90dc1-f9a1-45c5-b12a-cd7f3ce0ee47" name="Changes" comment="" />
+      <created>1782044625289</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1782044625289</updated>
+    </task>
+    <servers />
+  </component>
+</project>

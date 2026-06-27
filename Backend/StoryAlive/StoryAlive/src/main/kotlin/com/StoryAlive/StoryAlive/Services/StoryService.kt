@@ -6,6 +6,7 @@ import com.StoryAlive.StoryAlive.DTOs.Story.StoryRequestDTO
 import com.StoryAlive.StoryAlive.DTOs.Key.CastKey
 import com.StoryAlive.StoryAlive.DTOs.Key.VoiceActorKey
 import com.StoryAlive.StoryAlive.DTOs.Story.RequestStoryUpdateDTO
+import com.StoryAlive.StoryAlive.DTOs.StoryResponseDTO
 import com.StoryAlive.StoryAlive.Enums.BGMusicEmotion
 import com.StoryAlive.StoryAlive.Enums.Emotion
 import com.StoryAlive.StoryAlive.Enums.Genre
@@ -17,6 +18,7 @@ import com.StoryAlive.StoryAlive.Models.BackgroundMusic
 import com.StoryAlive.StoryAlive.Models.Location
 import com.StoryAlive.StoryAlive.Models.VoiceActor
 import com.StoryAlive.StoryAlive.Repositories.StoryRepo
+import com.StoryAlive.StoryAlive.mapper.toResponse
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.bson.types.ObjectId
 import org.springframework.data.domain.Page
@@ -41,35 +43,35 @@ class StoryService(private val storyRepo: StoryRepo,
 
     val mapper = jacksonObjectMapper()
 
-    fun getAllStories(pageNumber: Int, pageSize: Int): Page<Story> {
+    fun getAllStories(pageNumber: Int, pageSize: Int): Page<StoryResponseDTO> {
         val pageable: Pageable = PageRequest.of(pageNumber, pageSize)
-        return storyRepo.findAllByIsPrivateFalse(pageable)
+        return storyRepo.findAllByIsPrivateFalse(pageable).map { story -> story.toResponse() }
     }
 
-    fun getAllFavouriteStories(pageNumber: Int, pageSize: Int): Page<Story>{
+    fun getAllFavouriteStories(pageNumber: Int, pageSize: Int): Page<StoryResponseDTO>{
         val pageable: Pageable = PageRequest.of(pageNumber, pageSize)
         val favouriteStoriesIds = userService.getUserFavouriteStories()
-        return storyRepo.findByStoryIdIn(favouriteStoriesIds, pageable)
+        return storyRepo.findByStoryIdIn(favouriteStoriesIds, pageable).map { story -> story.toResponse() }
     }
 
-    fun getAllPrivateStories(pageNumber: Int, pageSize: Int): Page<Story> {
+    fun getAllPrivateStories(pageNumber: Int, pageSize: Int): Page<StoryResponseDTO> {
         val pageable = PageRequest.of(pageNumber, pageSize)
         val creatorId: ObjectId = userService.getCurrentUser().getUserId()
-        return storyRepo.findAllByCreatorIdAndIsPrivateTrue(creatorId, pageable)
+        return storyRepo.findAllByCreatorIdAndIsPrivateTrue(creatorId, pageable).map { story -> story.toResponse() }
     }
 
-    fun getStoryById(id: ObjectId) : Story {
+    fun getStoryById(id: ObjectId) : StoryResponseDTO {
         userService.addStoryToHistory(id)
-        return storyRepo.findById(id).get()
+        return storyRepo.findById(id).get().toResponse()
     }
 
-    fun getHistory(pageNumber: Int, pageSize: Int) : Page<Story> {
+    fun getHistory(pageNumber: Int, pageSize: Int) : Page<StoryResponseDTO> {
         val pageable: Pageable = PageRequest.of(pageNumber, pageSize)
         val historyIds = userService.getHistoryStories()
-        return storyRepo.findByStoryIdIn(historyIds, pageable)
+        return storyRepo.findByStoryIdIn(historyIds, pageable).map { story -> story.toResponse() }
     }
 
-    fun createStory(storyRequest: StoryRequestDTO, pdf: MultipartFile): Story {
+    fun createStory(storyRequest: StoryRequestDTO, pdf: MultipartFile): StoryResponseDTO {
         val user = userService.getUser()
         println("starting LLM task!")
         val jsonString = llmService.generateStoryFromPdf(pdf.bytes)
@@ -110,10 +112,10 @@ class StoryService(private val storyRepo: StoryRepo,
         user.totalStoriesCount+=1
         user.totalPublishedStoriesCount+=1
         userService.saveUser(user)
-        return storyRepo.save(currentStory)
+        return storyRepo.save(currentStory).toResponse()
     }
 
-    fun createStoryDummy(storyId: ObjectId): Story {
+    fun createStoryDummy(storyId: ObjectId): StoryResponseDTO {
         val currentStory: Story = storyRepo.findById(storyId)
             .orElseThrow { RuntimeException("Story not found with id $storyId") }
 
@@ -135,10 +137,10 @@ class StoryService(private val storyRepo: StoryRepo,
         currentStory.duration = ttsResponse.duration
         currentStory.finalAudioPath = ttsResponse.audioPath
         currentStory.jsonPath = jsonPath
-        return storyRepo.save(currentStory)
+        return storyRepo.save(currentStory).toResponse()
     }
 
-    fun updateStory(storyId: ObjectId, sentenceId: String, requestStoryUpdateDTO: RequestStoryUpdateDTO): Story {
+    fun updateStory(storyId: ObjectId, sentenceId: String, requestStoryUpdateDTO: RequestStoryUpdateDTO): StoryResponseDTO {
 
         val currentStory = storyRepo.findById(storyId).orElseThrow { RuntimeException("Story not found with id $storyId") }
         println("Current story: ${currentStory.storyId}");
@@ -159,10 +161,7 @@ class StoryService(private val storyRepo: StoryRepo,
         currentStory.modifiedAt = java.time.Instant.now()
 
         val savedStory = storyRepo.save(currentStory)
-
-        supabaseStorageService.deleteFileFromSupabase(oldJsonPath)
-
-        return savedStory
+        return savedStory.toResponse()
     }
 
     //HELPER FUNCTIONS

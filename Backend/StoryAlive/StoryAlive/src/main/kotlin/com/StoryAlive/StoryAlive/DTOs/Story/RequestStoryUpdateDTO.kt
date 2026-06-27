@@ -4,6 +4,6 @@ import com.StoryAlive.StoryAlive.Enums.Emotion
 import com.StoryAlive.StoryAlive.Enums.Intensity
 
 data class RequestStoryUpdateDTO(
-    val emotion: Emotion,
-    val intensity: Intensity,
+    var emotion: Emotion,
+    val intensity: Intensity
 )
