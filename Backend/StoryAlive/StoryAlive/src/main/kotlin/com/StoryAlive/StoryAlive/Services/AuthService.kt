@@ -117,22 +117,15 @@ class AuthService (
         return Base64.getEncoder().encodeToString(hashBytes)
     }
 
-    fun logout(refreshToken: String) {
+    fun logout(accessToken: String) {
 
-        if (!jwtService.validateRefreshToken(refreshToken)) {
-            throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token")
+        if (!jwtService.validateAccessToken(accessToken)) {
+            throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid access token")
         }
 
-        val userId = jwtService.extractUserId(refreshToken)
+        val userId = ObjectId(jwtService.extractUserId(accessToken))
 
-        val hashedToken = hashToken(refreshToken)
-
-        val deletedCount = refreshTokenRepo.deleteByUserIdAndHashedToken(ObjectId(userId), hashedToken)
-
-
-        if (deletedCount == 0L) {
-            throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token not found")
-        }
+        refreshTokenRepo.deleteByUserId(userId)
     }
 
 }
