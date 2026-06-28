@@ -646,15 +646,6 @@ fun StoryDetailScreen(
                         label = "Emotion",
                         selectedItem = selectedEmotion.uppercase(),
                         options = emotions,
-//                        options = listOf(
-//                            "HAPPINESS",
-//                            "SADNESS",
-//                            "FEAR",
-//                            "ANGER",
-//                            "SURPRISE",
-//                            "WHISPER",
-//                            "NARRATION"
-//                        ),
                         onItemSelected = {
                             selectedEmotion = it
                         }

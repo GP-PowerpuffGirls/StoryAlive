@@ -10,6 +10,7 @@ import com.example.storyalive.model.StoryResponseDTO
 import com.example.storyalive.model.UserLoginRequest
 import com.example.storyalive.model.UserResponse
 import com.example.storyalive.model.UserSignupRequest
+import com.example.storyalive.model.UserUpdateRequest
 import com.example.storyalive.model.VoiceActorRequest
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -37,9 +38,8 @@ interface ApiService {
         @Body request: UserLoginRequest
     ): Response<AuthResponse>
 
-    @POST("auth/logout")
-    @Headers("No-Auth: true")
-    suspend fun logout(@Header("Authorization") refreshToken: String): Response<String>
+    @POST("/auth/logout")
+    suspend fun logout(): Response<Unit>
 
     @Multipart
     @POST("/stories/create-story")
@@ -104,12 +104,7 @@ interface ApiService {
 
     @PUT("user/edit")
     suspend fun editUser(
-        @Query("firstName") firstName: String,
-        @Query("lastName") lastName: String,
-        @Query("email") email: String,
-        @Query("age") age: Int,
-        @Query("currentPassword") currentPassword: String,
-        @Query("newPassword") newPassword: String
+       @Body request: UserUpdateRequest
     ): Response<UserResponse>
 
     @PUT("/stories/{storyId}/sentences/{sentenceId}")

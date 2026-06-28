@@ -52,12 +52,27 @@ class UserService ( private val userRepo: UserRepo, private val hashEncoder : Ha
         val user: Optional<User> = userRepo.findById(userId)
 
         var hashedPassword=""
-        if (updatedData.newPassword != "" && updatedData.currentPassword != "" && updatedData.newPassword == updatedData.currentPassword){
-            hashedPassword = hashEncoder.encode(updatedData.newPassword) ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to hash password")
-        }
-        else if(updatedData.newPassword == updatedData.currentPassword){
-            throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Incorrect Password")
-        }
+         if (
+             !updatedData.newPassword.isNullOrBlank() &&
+             !updatedData.currentPassword.isNullOrBlank()
+         ) {
+
+             if (!hashEncoder.matches(
+                     updatedData.currentPassword,
+                     user.get().password
+                 )
+             ) {
+                 throw ResponseStatusException(
+                     HttpStatus.UNAUTHORIZED,
+                     "Incorrect Password"
+                 )
+             }
+
+             hashedPassword = hashEncoder.encode(
+                 updatedData.newPassword
+             )!!
+         }
+
 
         val updatedUser = userRepo.save(
             User(

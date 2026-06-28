@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.storyalive.components.StoryAliveTopBar
 import com.example.storyalive.model.UserResponse
+import com.example.storyalive.model.UserUpdateRequest
 import com.example.storyalive.model.VoiceActorRequest
 import com.example.storyalive.network.RetrofitClient
 import com.example.storyalive.ui.theme.StoryAliveTheme
@@ -104,19 +105,20 @@ fun ProfileScreen(isLightTheme: Boolean = true) {
                 // Call API
                 scope.launch{
                     try {
-                        val response = RetrofitClient.createApi(context).editUser(
-                            updatedUser.firstName,
-                            updatedUser.lastName,
-                            updatedUser.email,
-                            updatedUser.age,
-                            currentPassword,
-                            newPassword
+                        val request = UserUpdateRequest(
+                            firstName = updatedUser.firstName,
+                            lastName = updatedUser.lastName,
+                            email = updatedUser.email,
+                            age = updatedUser.age,
+                            currentPassword = currentPassword,
+                            newPassword=newPassword
                         )
+                        val response = RetrofitClient.createApi(context).editUser(request)
                         if (response.isSuccessful) {
                             user = response.body()
                             showEdit = false
                         } else {
-                            // handle error
+                            println("Edit failed: ${response.code()}")
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()

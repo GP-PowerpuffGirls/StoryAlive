@@ -1,5 +1,6 @@
 package com.example.storyalive
 
+import android.content.Context.MODE_PRIVATE
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -304,8 +305,12 @@ fun SignUpScreen(
 
                                     val tokens = response.body()
 
-                                    println("Access Token: ${tokens?.accessToken}")
-                                    println("Refresh Token: ${tokens?.refreshToken}")
+                                    context.getSharedPreferences("app_prefs", MODE_PRIVATE)
+                                        .edit()
+                                        .putString("access_token", tokens?.accessToken?.trim() ?: "")
+                                        .putString("refresh_token", tokens?.refreshToken?.trim() ?: "")
+                                        .apply()
+
                                     CoroutineScope(Dispatchers.Main).launch {
                                         Toast.makeText(context, "Signup successful!", Toast.LENGTH_SHORT).show()
                                         context.startActivity(Intent(context, UploadActivity::class.java))

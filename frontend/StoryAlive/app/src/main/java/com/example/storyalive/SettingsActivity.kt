@@ -39,7 +39,7 @@ import com.example.storyalive.components.StoryAliveTopBar
 import com.example.storyalive.network.RetrofitClient
 import com.example.storyalive.ui.theme.themeColors
 import kotlinx.coroutines.launch
-
+import android.content.Intent
 class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -312,27 +312,50 @@ fun SettingsScreen(isLightTheme: Boolean = true, onThemeChange: (Boolean) -> Uni
                     scope.launch {
                         try {
                             val api = RetrofitClient.createApi(context)
-                            val refreshToken = RetrofitClient.getRefreshToken(context)
-                                .trim()
-                                .replace("\\s+".toRegex(), "")
-                            val response = api.logout("Bearer $refreshToken")
-                            if (response.isSuccessful) {
-                                // Clear local session / token
-                                val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-                                prefs.edit().clear().apply()
 
-                                // Navigate to login screen
-                                val intent = android.content.Intent(context, LoginActivity::class.java)
-                                intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
-                                        android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            val accessToken = context
+                                .getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+                                .getString("access_token", "")
+                                ?.trim() ?: ""
+
+
+                            val response = api.logout()
+
+                            if (response.isSuccessful) {
+
+                                // remove saved tokens
+                                context.getSharedPreferences(
+                                    "app_prefs",
+                                    Context.MODE_PRIVATE
+                                ).edit().clear().apply()
+
+                                Toast.makeText(
+                                    context,
+                                    "Signed out successfully",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+
+                                val intent = Intent(context, LoginActivity::class.java)
+                                intent.flags =
+                                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                                            Intent.FLAG_ACTIVITY_CLEAR_TASK
+
                                 context.startActivity(intent)
 
                             } else {
-                                Toast.makeText(context, "Sign out failed", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    "Logout failed: ${response.code()}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
+
                         } catch (e: Exception) {
-                            e.printStackTrace()
-                            Toast.makeText(context, "Error signing out", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                e.message,
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     }
                 },

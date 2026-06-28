@@ -40,7 +40,6 @@ class AuthController (val authService: AuthService) {
     @PostMapping("/logout")
     fun logout( @RequestHeader("Authorization") authHeader: String ) : ResponseEntity<String> {
         val rawToken = if(authHeader.startsWith("Bearer")) authHeader.removePrefix("Bearer ") else authHeader
-
         authService.logout(rawToken)
         return ResponseEntity.ok("Logged Out Successfully")
     }
