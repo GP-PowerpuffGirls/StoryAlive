@@ -9,13 +9,13 @@
 - **PDF-to-Audiobook pipeline** — upload an Arabic story as a PDF and receive a complete mixed audio production
 - **Gemini 2.5 Flash story extraction** — structured JSON screenplay (cast, chapters, scenes, sentences) produced from raw PDF content
 - **Emotion-aware TTS** — each sentence carries an `emotion` (HAPPINESS, SADNESS, ANGER, FEAR, SURPRISE, WHISPER, NARRATION) and `intensity` (LOW / MEDIUM / HIGH) that drives voice rendering
-- **Automatic voice casting** — Gemini-extracted characters are matched against the voice actor pool by gender, age group, and preferred role; a demo name-map allows fixed casting for known actors
+- **Automatic voice casting** — Gemini-extracted characters are matched against the voice actor pool by gender, age group, and preferred role
 - **Background music assignment** — scene-level emotion (ROMANTIC, TENSE, TRAGIC, MYSTERIOUS, TRIUMPHANT, PEACEFUL, ENERGETIC) selects a random matching track from the library
 - **Location sound effects** — 18 recognised location enums (COFFEE\_SHOP, BEACH, MOSQUE, RAIN, …) are resolved to SFX paths and mixed into the output
 - **Per-sentence audio editing** — after generation, any sentence can be re-rendered with a different emotion/intensity without regenerating the whole story
 - **Public / private story visibility** — stories are scoped per user; private stories are only visible to their creator
 - **Custom voice actors** — users can record or upload a 3–5 second audio sample to create a personal voice actor (public or private)
-- **JWT authentication** — access token (2 h) + refresh token (30 days) with hashed token storage; full logout invalidation
+- **JWT authentication** — access token (30 min) + refresh token (30 days) with hashed token storage; full logout invalidation
 - **Supabase cloud storage** — PDFs, JSON scripts, and voice actor audio samples are stored in configurable buckets
 - **Paginated story browsing** — public stories, private stories, favourites (API-ready), and history (API-ready)
 - **Profile management** — view account statistics and edit personal details including password change
@@ -484,8 +484,6 @@ cd Backend/StoryAlive/StoryAlive
 
 **Supabase as a file store only.** The project does not use Supabase's authentication, realtime, or database features — only its object storage. All auth and data logic lives in the Spring Boot backend and MongoDB.
 
-**Demo actor name-map.** The `assignActorsToCast` function contains a hardcoded map from Arabic character names to actor names. This was a deliberate shortcut to ensure consistent results during the graduation demo with known voices.
-
 ---
 
 ## 🔮 Future Improvements
@@ -493,7 +491,6 @@ cd Backend/StoryAlive/StoryAlive
 - Replace the synchronous TTS polling approach with an async webhook or message queue to free server threads
 - Add a real listening history and favourites UI (API endpoints exist; the Android Activities are stubbed but commented out of navigation)
 - Implement playback speed control (UI buttons are rendered but the `MediaPlayer.playbackParams` calls are not wired)
-- Generalise the demo actor name-map into a user-facing character → voice actor assignment screen
 - Add token refresh logic on the Android client (the refresh endpoint exists but the interceptor does not auto-retry 401s)
 - Extract environment-specific configuration into Spring profiles for dev/staging/prod
 - Support multi-language stories beyond Arabic
