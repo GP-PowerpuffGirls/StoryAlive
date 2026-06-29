@@ -114,8 +114,8 @@ fun EditProfileScreen(
                     onSave(updatedUser, currentPassword, newPassword)
                 },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.accent,          // dark brown
-                    contentColor = Color(0xFFFFF0D1)         // cream
+                    containerColor = colors.accent,
+                    contentColor = Color(0xFFFFF0D1)
                 ),
                 modifier = Modifier.weight(1f)
             ) {
@@ -125,7 +125,7 @@ fun EditProfileScreen(
             Button(
                 onClick = onCancel,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF917A73),
-                    contentColor = Color(0xFFFFF0D1)   ),
+                    contentColor = Color(0xFFFFF0D1)),
                 modifier = Modifier.weight(1f)
             ) {
                 Text("Cancel")

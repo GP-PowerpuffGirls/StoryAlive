@@ -137,7 +137,7 @@ class GeminiService(
 
                                             "path" to mapOf("type" to "string")
                                         ),
-                                        "required" to listOf("locationName","path")
+                                        "required" to listOf("locationName", "path")
                                     ),
 
                                     "scene_emotion" to mapOf(
@@ -255,6 +255,7 @@ NONE = none
 
 Return ONLY the enum keys, NOT Arabic words.
 If location cannot be mapped → use NONE
+
 IMPORTANT RULE:
 If a sentence describes an action, feeling, or scene (NOT spoken words),
 it MUST be assigned to the narrator "راوي" with emotion = NARRATION and gender = MALE.
@@ -303,10 +304,7 @@ Choose exactly one PROTAGONIST whenever the story has a central character.
 
 Use SIDE_CHARACTER instead of NONE for supporting characters.
 
-Arabic story:
-{text}
-
-Return JSON only.
+Analyze the uploaded PDF story and return JSON only.
 """.trimIndent()
         log.info("Sending request to Gemini")
         val requestMap = mapOf(
@@ -503,7 +501,7 @@ Return JSON only.
                 if (sentences.isEmpty()) return@forEachIndexed
 
                 val location =
-                    scene.location ?: GeminiLocation("NONE", "")
+                    scene.location ?: GeminiLocation("NONE","")
 
                 val locationName =
                     arabicToEnum[location.locationName]
@@ -511,6 +509,7 @@ Return JSON only.
                             location.locationName!!
                         else
                             "NONE"
+
 
                 scenesOutput += Scene(
                     sceneId = sceneIndex + 1,
