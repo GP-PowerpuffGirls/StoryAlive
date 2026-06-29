@@ -280,18 +280,58 @@ Navigation is Activity-based (no Jetpack Navigation component in the active code
 
 ### Gemini 2.5 Flash — Story Extraction
 
-`GeminiService.extractStory(pdfBytes)` is the primary AI integration.
+`GeminiService.extractStory(pdfBytes)` is the primary AI integration. Three OCR approaches were evaluated (EasyOCR at ~77 s, Tesseract at ~136 s, Gemini at ~30 s); Gemini was chosen for speed and accuracy on Arabic text with diacritics.
 
 - The PDF is Base64-encoded and sent as `inlineData` alongside a system prompt that instructs Gemini to act as a "cinematic story understanding engine"
 - The response is constrained to a strict JSON schema: cast array with `gender`, `isAdult`, and `preferredRole`; chapters containing scenes with `location`, `scene_emotion`, and `segments` (speaker, sentence, emotion, intensity)
 - Location names are expected as English enum keys; an Arabic→enum fallback map handles cases where Gemini returns Arabic text
 - The narrator character "راوي" is always guaranteed to exist in the output
+- Before settling on Gemini, the team fine-tuned Qwen-2.5-1.5B-Instruct with LoRA for structured JSON extraction; Gemini was ultimately adopted because it handled literary nuance and implicit context more reliably
 
-### TTS Model — Audio Synthesis
+### Tag-EGTTS — TTS Model & FastAPI Service
 
-`TTSService` communicates with a custom TTS HTTP service whose URL is injected via `TTS_MODEL_URL2`. The full `StoryCreationDTO` — including prosody reference paths pointing to voice actor audio samples in Supabase — is POSTed to the model root. The model returns a `task_id` immediately and processes asynchronously. The backend polls `GET /results/{task_id}` until the model reports `completed` and returns `{audioPath, duration}`.
+The TTS module runs as a standalone **FastAPI** service inside a **Kaggle** notebook, exposed externally via **Ngrok**. This was chosen after discovering that CPU-only HuggingFace Spaces took ~3 hours to produce 3 minutes of audio; a single Kaggle GPU node reduced that to ~1 minute.
 
-For per-sentence updates, `PUT /update-story-audio` is called with the full story DTO, the target `sentenceId`, and the new `emotion`/`intensity`. This allows granular re-rendering without reprocessing the whole audiobook.
+**Model:** Tag-EGTTS — fine-tuned from EGTTS (itself based on XTTS / Tortoise architecture) on a custom dataset of **1,983 audio recordings** from **155 speakers** covering 7 emotions × 3 intensity levels, collected from Egyptian cartoon movies and team-organized recording sessions.
+
+**Emotion tagging:** each sentence is prepended with two special tokens before inference:
+```
+<emo_happiness> <int_mid> النص العربي هنا
+```
+Ten tokens were added to the vocabulary (7 emotion + 3 intensity tags). The model learns to condition prosody on these tags without pronouncing them.
+
+**"Dual Mode" behaviour:** when the reference audio is emotionally neutral, the model renders the emotion from the text tags. When the reference audio already carries a strong emotion, that emotion dominates. This lets the system generate a wider range of expressiveness from a single neutral recording per speaker.
+
+**MOS evaluation (29 participants):**
+| Model | Average MOS |
+|---|---|
+| Tag-EGTTS (with tags) | 3.54 |
+| Base EGTTS (no fine-tuning) | 3.01 |
+
+Overall emotion recognition accuracy improved from 43.3% (base) to 53.0% (Tag-EGTTS), with the largest gains in happiness (+47 pp), whisper (+41 pp), and surprise (+25 pp).
+
+**TTS service endpoints:**
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/tts/` | Submit full `StoryCreationDTO`; returns `{task_id}` immediately |
+| `GET` | `/tts/results/{task_id}` | Poll for status (`processing` / `completed` / `failed`) |
+| `POST` | `/tts_test/` | Single-sentence test: form-data with `text`, `audio_file`, `emotionName`, `intensity` |
+
+**Pipeline inside the TTS service (`run_tts_pipeline`):**
+1. Download all prosody reference WAVs, SFX, and BG music from Supabase concurrently (with an in-memory cache to avoid duplicate fetches)
+2. For each sentence, prepend emotion/intensity tags and call `inference_by_model()` — which uses `model.get_conditioning_latents()` to extract speaker embeddings and `model.inference()` at `temperature=0.65`
+3. Save per-sentence WAVs in a hierarchical folder: `outputs/{storyId}/{chapterId}/{sceneId}/{sentenceId}.wav`
+4. Concatenate with `pydub`: chapter title → scenes → sentences; overlay SFX (at scene start) and loop BG music (volume attenuated ~15 dB below narration); add 2 s silence between scenes and 3 s between chapters
+5. Export as MP3 at 192 kbps, upload to the `story-audio-files` Supabase bucket, and store the public URL in the task result
+
+**Model files** are loaded from a Kaggle dataset (`mariamelkondakly/emoeg-tts`) at paths:
+```
+/kaggle/input/models/mariamelkondakly/emoeg-tts/other/emoeg-tts/1/
+  config.json
+  vocab.json
+  model.pth
+```
 
 ### Voice Casting Logic
 
@@ -480,9 +520,41 @@ cd Backend/StoryAlive/StoryAlive
 
 ---
 
+## 🔗 Links & Resources
+
+| Resource | Link |
+|---|---|
+| 📦 GitHub Repository | [GP-PowerpuffGirls/StoryAlive](https://github.com/GP-PowerpuffGirls/StoryAlive) |
+| 🖥️ Kaggle TTS Notebook | [storyalive-v2](https://www.kaggle.com/code/mariamelkondakly/storyalive-v2) |
+| 🤗 HuggingFace Organization | [ttsEmo](https://huggingface.co/ttsEmo) |
+| ☁️ Google Drive (experiments & fine-tuning) | [Drive folder](https://drive.google.com/drive/folders/1uo3cJyNw_A2T3zGhlCBX7OsXUL43of7d?usp=sharing) |
+
+### 🧠 Model Checkpoints
+
+| Model | Description | Link |
+|---|---|---|
+| Tag-EGTTS (final) | Full-architecture fine-tuned model with emotion + intensity tags | [Kaggle](https://www.kaggle.com/models/mariamelkondakly/emoeg-tts/) |
+| Narration-only fine-tuned | GPT-encoder fine-tuned on narration audio only | [Kaggle](https://www.kaggle.com/datasets/mariakaiser/narration-only-finetuned-model) |
+| Emotions-only fine-tuned | GPT-encoder fine-tuned on emotional audio only | [Kaggle](https://www.kaggle.com/datasets/mariakaiser/xtts-model) |
+| All-data fine-tuned | GPT-encoder fine-tuned on combined narration + emotion dataset | [Kaggle](https://www.kaggle.com/datasets/mariakaiser/all-data-emo-and-narr-ft) |
+
+
+---
+
 ## 👥 Contributors
 
-- <!-- Add contributor names here -->
+Ain Shams University — Faculty of Computer & Information Sciences, Computer Science Department (July 2026)
+
+| Name | Role |
+|---|---|
+| Mariam Elkondakly | Team Lead |
+| Menna Mohamed | |
+| Christine Medhat | |
+| Habiba Hamed | |
+| Maria Kaiser | |
+| Nora Ahmed | |
+
+**Supervisors:** Dr. Mohamed Mabrouk (Assistant Professor) · AL. Aya Saad (Assistant Lecturer)
 
 ---
 
