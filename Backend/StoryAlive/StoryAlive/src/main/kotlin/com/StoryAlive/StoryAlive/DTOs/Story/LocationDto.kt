@@ -4,5 +4,5 @@ import com.StoryAlive.StoryAlive.Enums.LocationName
 
 public data class LocationDto(
     val locationName: LocationName,
-    val path: String
+    var path: String
 )

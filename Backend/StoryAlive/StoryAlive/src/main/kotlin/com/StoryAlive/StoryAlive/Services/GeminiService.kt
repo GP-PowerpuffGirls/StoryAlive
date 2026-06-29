@@ -264,7 +264,7 @@ Example:
 "اتنهّدت حبيبة بهدوء"
 → speaker: "راوي"
 
-Only actual spoken dialogue inside quotes should be assigned to characters.
+Include a character in the cast array ONLY if that character speaks at least one line of dialogue.
 
 IMPORTANT:
 Do NOT skip any narration text.

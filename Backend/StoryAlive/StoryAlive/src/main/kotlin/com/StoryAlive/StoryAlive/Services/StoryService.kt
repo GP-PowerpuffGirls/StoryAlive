@@ -245,9 +245,9 @@ class StoryService(private val storyRepo: StoryRepo,
         for (chapter in storyDto.chapters) {
             for (scene in chapter.scenes) {
                 if(scene.location.locationName == LocationName.NONE) continue
-                val bgMusicPath = sfxMap[scene.location.locationName]
-                if (bgMusicPath != null) {
-                    scene.bgMusic.musicPath = bgMusicPath
+                val sfxPath = sfxMap[scene.location.locationName]
+                if (sfxPath != null) {
+                    scene.location.path = sfxPath
                 }
             }
         }
