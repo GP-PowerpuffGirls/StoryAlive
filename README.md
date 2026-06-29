@@ -474,26 +474,6 @@ cd Backend/StoryAlive/StoryAlive
 
 ---
 
-## 🗂️ Folder Structure
-
-| Folder | Purpose |
-|---|---|
-| `Backend/StoryAlive/StoryAlive/src/main/kotlin/…/Controllers` | REST controllers; thin layer that delegates to services |
-| `Backend/…/Services` | All business logic; `StoryService` is the pipeline orchestrator |
-| `Backend/…/Models` | MongoDB `@Document` classes |
-| `Backend/…/DTOs` | API request/response shapes and internal pipeline DTOs |
-| `Backend/…/Repositories` | Spring Data MongoDB interfaces |
-| `Backend/…/Security` | `JwtService`, `JwtAuthFilter`, `SecurityConfig`, `HashEncoder` |
-| `Backend/…/Enums` | Shared enumerations for emotions, genres, locations, etc. |
-| `Backend/…/Mappers` | Extension functions mapping domain models to DTOs |
-| `frontend/StoryAlive/app/src/main/java/…` | All Android source |
-| `frontend/…/network` | Retrofit interface and OkHttp client factory |
-| `frontend/…/model` | Kotlin data classes matching API DTOs |
-| `frontend/…/components` | Shared Compose UI components (top bar) |
-| `frontend/…/utils` | Utility functions (URI → File) |
-
----
-
 ## 🧭 Design Decisions
 
 **Gemini instead of a local LLM.** The codebase contains a legacy `LLMService` that called a HuggingFace-hosted model. The active `createStory` path bypasses it entirely in favour of `GeminiService`, which offers constrained JSON schema output — critical for reliable downstream parsing.
@@ -545,14 +525,14 @@ cd Backend/StoryAlive/StoryAlive
 
 Ain Shams University — Faculty of Computer & Information Sciences, Computer Science Department (July 2026)
 
-| Name | Role |
+| Name | Email |
 |---|---|
-| Mariam Elkondakly | Team Lead |
-| Menna Mohamed | |
-| Christine Medhat | |
-| Habiba Hamed | |
-| Maria Kaiser | |
-| Nora Ahmed | |
+| Mariam Elkondakly | mariamelkondakly88@outlook.com |
+| Menna Mohamed | menna.mohamedd2023@gmail.com |
+| Christine Medhat | Christin.medhat2003@gmail.com |
+| Habiba Hamed | hamedhabiba217@gmail.com |
+| Maria Kaiser | mariakaiser2024@gmail.com |
+| Nora Ahmed | Noraahmedcs@gmail.com |
 
 **Supervisors:** Dr. Mohamed Mabrouk (Assistant Professor) · AL. Aya Saad (Assistant Lecturer)
 
