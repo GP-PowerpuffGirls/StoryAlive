@@ -122,7 +122,7 @@ sequenceDiagram
 ### AI & External Services
 | Service | Purpose |
 |---|---|
-| Google Gemini 2.5 Flash | PDF parsing → structured screenplay JSON (cast + scenes + per-sentence emotion) |
+| Google Gemini 2.5 Flash | Story analysis and structured screenplay generation from uploaded PDF |
 | Custom TTS Model | Converts `StoryCreationDTO` to a mixed audio file with prosody references |
 
 ---
