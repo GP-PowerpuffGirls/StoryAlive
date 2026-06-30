@@ -1,6 +1,6 @@
 # 📖 StoryAlive
 
-**StoryAlive** is a graduation project that transforms Arabic PDF stories into fully produced audiobooks. A user uploads a PDF, and the platform automatically extracts a screenplay, assigns voice actors to each character, synthesizes speech with per-sentence emotion control, layers in location sound effects and background music, and returns a single mixed audio file with a synchronized scrolling transcript.
+**StoryAlive** is a graduation project that transforms Egyptian Arabic PDF stories into fully produced audiobooks. A user uploads a PDF, and the platform automatically extracts a screenplay, assigns voice actors to each character, synthesizes speech with per-sentence emotion control, layers in location sound effects and background music, and returns a single mixed audio file with a synchronized scrolling transcript.
 
 ---
 
@@ -234,7 +234,7 @@ StoryAlive/
 
 ### Security
 
-`JwtAuthFilter` sits in front of every non-`/auth/**` endpoint. Access tokens live for 2 hours; refresh tokens for 30 days. Tokens are validated by type claim to prevent refresh tokens being used as access tokens.
+`JwtAuthFilter` sits in front of every non-`/auth/**` endpoint. Access tokens live for 30 minutes; refresh tokens for 30 days. Tokens are validated by type claim to prevent refresh tokens being used as access tokens.
 
 ### Data Models
 
