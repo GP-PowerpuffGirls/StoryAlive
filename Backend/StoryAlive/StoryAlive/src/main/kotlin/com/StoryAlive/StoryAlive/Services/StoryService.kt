@@ -98,7 +98,7 @@ class StoryService(private val storyRepo: StoryRepo,
         if (currentStory.hasSfx) {
             assignSfxToScene(storyDto)
         }
-        println("generating story")
+        println("generating story: "+ storyDto.toString())
         val ttsResponse = ttsService.generateAudioFromStory(storyDto)
         println("generating story finished")
 
@@ -333,7 +333,7 @@ class StoryService(private val storyRepo: StoryRepo,
             "ماريا" to "maria kaiser",
             "كريستين" to "christin",
             "منه" to "menna mohamed",
-            "حبيبه" to "habiba mohamed",
+            "حبيبة" to "habiba mohamed",
             "مريم" to "mariam elkondakly",
 //            "منه" to "menna mohamed",
             "نوره" to "nora"

@@ -7,7 +7,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.mongodb.repository.MongoRepository
 
-interface LocationRepo: MongoRepository<Location, ObjectId> {
+public interface LocationRepo: MongoRepository<Location, ObjectId> {
 
     override fun findAll(pageable: Pageable): Page<Location>
 

@@ -267,7 +267,8 @@ Example:
 Include a character in the cast array ONLY if that character speaks at least one line of dialogue.
 
 IMPORTANT:
-Do NOT skip any narration text.
+Do NOT skip or change anything about the story, don't change sentences or speakers, keep it all as it is.
+Don't remove the narration sentences in between, however short.
 Every part of the story must be included either as narration or dialogue.
 
 IMPORTANT RULE:
